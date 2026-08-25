@@ -631,6 +631,57 @@ if (speakRoute && audioRoute) {
   check('make-pack --check validates packs', /OK: 1 pack\(s\) validated/.test(chk), chk.trim().split('\n').pop());
 }
 
+// --- splitText hardening (smart sentence segmentation) ---
+// URLs / emails / decimals / versions must never be split by the sentence
+// splitter ('.' inside "3.14") or by hard cuts; a tiny trailing orphan chunk
+// should merge back into the previous one.
+{
+  const { splitText } = plugin.__test || {};
+  check('__test.splitText hook exposed', typeof splitText === 'function');
+  if (typeof splitText === 'function') {
+    const t1 = '访问 https://example.com/a.b.c 获取 3.14 版本并联系 test.user@example.com 获取 v2.0.1。'.repeat(12);
+    const r1 = splitText(t1, 40);
+    const joined1 = r1.join('');
+    check('splitText: total content preserved', joined1.replace(/\s/g, '') === t1.replace(/\s/g, ''), `parts=${r1.length}`);
+    check('splitText: URL never split mid-token', r1.every(p => !p.includes('example.com/a') || p.includes('https://example.com/a.b.c')), JSON.stringify(r1.slice(0, 2)));
+    check('splitText: decimal never split (3.14)', r1.every(p => !/3\.1(?!4)/.test(p) && !/3\.(?!14)/.test(p)), JSON.stringify(r1.slice(0, 3)));
+    check('splitText: email never split', r1.every(p => !p.includes('test.user@') || p.includes('test.user@example.com')), JSON.stringify(r1.slice(0, 3)));
+    check('splitText: version never split (v2.0.1)', r1.every(p => !p.includes('2.0.1') || p.includes('v2.0.1')), undefined);
+
+    // long unbroken latin run: hard cut slides back to a whitespace boundary
+    const t2 = 'short segment '.repeat(60) + 'end.';
+    const r2 = splitText(t2, 24);
+    check('splitText: hard cuts land on word boundaries', r2.every(p => !p.trim().endsWith('ment') || p.includes('segment ')), `lengths=${r2.map(p => p.length).join(',')}`);
+
+    // trailing tiny sentence merges into the previous chunk instead of stuttering
+    const t3 = '这是一段足够长的中文测试文本，用来验证末尾孤儿短句是否被合并回前一块。好。';
+    const r3 = splitText(t3, 30);
+    check('splitText: tiny trailing chunk merged', r3.length === 2 && /好。$/.test(r3[1]) && /好。$/.test(r3[0]) === false, JSON.stringify(r3));
+
+    // short text: single chunk, unchanged semantics
+    const r4 = splitText('你好。', 30);
+    check('splitText: short text stays one chunk', r4.length === 1 && r4[0] === '你好。', JSON.stringify(r4));
+  }
+}
+
+// --- /speak with unreachable RVC service -> localized, action-ready error ---
+// The client turns this i18n-tagged error into a toast (+ one-click Edge
+// fallback); verify the host response shape.
+{
+  const badSpeak = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+    text: '你好。',
+    voice: 'zh-CN-XiaoxuanNeural',
+    provider: 'rvc',
+    custom: { baseUrl: 'http://127.0.0.1:1', model: 'demo.pth', index: '', baseSource: 'edge' }
+  })), mockRes());
+  const badSpeakData = JSON.parse(badSpeak.body);
+  check('speak rvc unreachable returns localized error',
+    badSpeak.head.code === 500 &&
+    badSpeakData.error && typeof badSpeakData.error === 'string' &&
+    badSpeakData.i18n && (badSpeakData.i18n.code === 'host.rvcUnreachable' || badSpeakData.i18n.code === 'host.rvcHttpFail'),
+    badSpeak.body);
+}
+
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
 process.exit(failed.length === 0 ? 0 : 1);

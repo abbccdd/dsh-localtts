@@ -121,7 +121,7 @@ try {
     // seed a "user-changed" snapshot into localStorage, then simulate a reload by
     // re-running the factory so loadSettings() applies it
     memStore.set('dsh-tts-settings', JSON.stringify({
-      autoRead: true, voice: 'zh-CN-YunyangNeural', provider: 'rvc',
+      autoRead: true, voice: 'zh-CN-YunyangNeural', provider: 'rvc', rvcAutoFallback: true,
       rvc: { baseUrl: 'http://127.0.0.1:9999', model: '/x.pth', indexRate: 0.5 },
     }));
     const srcS = globalThis.__dshTtsClientSrc;
@@ -130,11 +130,12 @@ try {
     const S2 = globalThis.window.__dshTtsSettings;
     const s2 = S2.get();
     check('settings loaded from localStorage', s2.autoRead === true && s2.voice === 'zh-CN-YunyangNeural' && s2.provider === 'rvc', JSON.stringify(s2));
+    check('rvcAutoFallback loaded from localStorage', s2.rvcAutoFallback === true, 'rvcAutoFallback=' + s2.rvcAutoFallback);
     check('rvc settings loaded from localStorage', s2.rvc.baseUrl === 'http://127.0.0.1:9999' && s2.rvc.model === '/x.pth' && s2.rvc.indexRate === 0.5, JSON.stringify(s2.rvc));
     // reset: restore defaults + drop stored settings
     S2.reset();
     const r = S2.get();
-    check('reset restores defaults', r.autoRead === false && r.voice === 'zh-CN-XiaoxuanNeural' && r.provider === 'edge-tts', JSON.stringify(r));
+    check('reset restores defaults', r.autoRead === false && r.voice === 'zh-CN-XiaoxuanNeural' && r.provider === 'edge-tts' && r.rvcAutoFallback === false, JSON.stringify(r));
     check('reset clears stored settings', !memStore.has('dsh-tts-settings'));
     // corrupt stored JSON must not crash; falls back to defaults
     memStore.set('dsh-tts-settings', '{not json');
@@ -171,7 +172,9 @@ if (!failed) {
         messageId: 'm1',
       });
       react.useState = orig.useState; react.useEffect = orig.useEffect; react.useRef = orig.useRef; react.useMemo = orig.useMemo;
-      check(`render ${slot}`, !!node, undefined);
+      // `null` is a legitimate conditional render (e.g. the toast host when no
+      // toast is active); only `undefined`/throw counts as broken.
+      check(`render ${slot}`, node !== undefined, node === null ? '(conditional null)' : undefined);
     } catch (e) {
       check(`render ${slot}`, false, String(e && e.stack || e).slice(0, 200));
     }
@@ -200,6 +203,56 @@ if (!failed) {
     } catch (e) {
       check('auto-read rendered as labeled pill', false, String(e && e.stack || e).slice(0, 200));
     }
+  }
+}
+
+// Toast: showToast() must render a visible toast node in shell.overlay with the
+// message; dismissToast() must remove it. (This is the error-surfacing channel
+// added for message read-aloud / auto-read failures + RVC fallback notices.)
+{
+  const toastApi = globalThis.window.__dshTtsToast;
+  if (toastApi && typeof toastApi.show === 'function') {
+    const hasClass = (n, cls) => {
+      if (!n) return false;
+      if (n.props && typeof n.props.className === "string" &&
+          n.props.className.split(/\s+/).includes(cls)) return true;
+      const ch = n.children;
+      if (Array.isArray(ch)) { for (const c of ch) { if (hasClass(c, cls)) return true; } }
+      return false;
+    };
+    const allText = n => {
+      if (!n) return '';
+      if (typeof n === 'string' || typeof n === 'number') return String(n);
+      const ch = n.children;
+      if (Array.isArray(ch)) return ch.map(allText).join('');
+      return '';
+    };
+    const overlayComps = injectedComponents.filter(c => c.slot === 'shell.overlay');
+    try {
+      toastApi.show('语音合成失败：boom', 'error');
+      // render with the shim hooks
+      const h = makeHookCtx();
+      const orig = { useState: react.useState, useEffect: react.useEffect, useRef: react.useRef, useMemo: react.useMemo };
+      react.useState = h.useState; react.useEffect = h.useEffect; react.useRef = h.useRef; react.useMemo = h.useMemo;
+      const rendered = overlayComps.map(({ fn }) => fn()({}));
+      react.useState = orig.useState; react.useEffect = orig.useEffect; react.useRef = orig.useRef; react.useMemo = orig.useMemo;
+      const toastNodes = rendered.filter(n => hasClass(n, 'dsh-tts-toast'));
+      const withText = toastNodes.filter(n => allText(n).includes('语音合成失败：boom'));
+      check('toast renders in shell.overlay with message', toastNodes.length >= 1 && withText.length >= 1,
+        `toastNodes=${toastNodes.length} textFound=${withText.length}`);
+      // dismiss -> no toast rendered anymore
+      toastApi.dismiss();
+      const h2 = makeHookCtx();
+      const orig2 = { useState: react.useState, useEffect: react.useEffect, useRef: react.useRef, useMemo: react.useMemo };
+      react.useState = h2.useState; react.useEffect = h2.useEffect; react.useRef = h2.useRef; react.useMemo = h2.useMemo;
+      const rendered2 = overlayComps.map(({ fn }) => fn()({}));
+      react.useState = orig2.useState; react.useEffect = orig2.useEffect; react.useRef = orig2.useRef; react.useMemo = orig2.useMemo;
+      check('toast dismissed removes toast node', rendered2.filter(n => hasClass(n, 'dsh-tts-toast')).length === 0);
+    } catch (e) {
+      check('toast renders + dismisses', false, String(e && e.stack || e).slice(0, 200));
+    }
+  } else {
+    check('toast hook exposed (__dshTtsToast)', false, 'hook missing');
   }
 }
 

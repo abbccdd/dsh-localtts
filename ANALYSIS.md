@@ -125,3 +125,33 @@
   点击外部/滚动自动隐藏。新增 `sel.read` i18n 键与 `dsh-tts-sel-*` 主题化 CSS；preview 屏验证 chip 渲染正常。
 - **待续**：M2 原生流式合成（SSE/WebSocket + 客户端流式播放适配——较大且需真实宿主交互验证）。
 - **M2 原生流式合成的可行子集（已完成）**：把**自适应分块渐进播放**扩展到泛 Edge 长读——长文本不再"整段合成完再播"，而是走同一分块队列"边合成边播"。`/speak` 的 `convertChunk` 改为按 `job.sink` 分发（RVC=逐块变声，Edge=逐块 Edge 合成）；长 Edge 文本 >12s 时返回 `jobId+chunks`，前端复用现有 `playChunks` 无感续播。`tests/smoke.mjs` 增加"long edge read returns chunked job"用例（50/50）。
+
+## 12. 追加落地记录（2026-08-25：toast 报错落地点 · RVC 降级 · 分句硬化）
+
+针对四项优化建议的评估与实施（详见方案：toast 必做、降级 opt-in、分句低成本）：
+
+- **F-toast（错误落地点，改自 E2/E4 的"静默失败"）**：
+  - client 新增 `shared.toast` + `showToast/dismissToast` + `shell.overlay` 的 `TtsToastHost`
+    （主题化 `--dsw-*` token、`role="alert"`、6s 自动消失 + 关闭按钮 + 可选动作按钮）。
+  - **消息朗读 / 自动朗读失败不再静默**：`speakText` 所有失败路径统一走 `onError`，
+    按钮与 auto-read 均接入 toast（沿用 `r.error !== "interrupted"` 打断抑制）；
+    play-failed 路径补 `onError`；预览面板移除 `.then` 重复报错（避免双显）。
+  - 测试：`tests/client-load.mjs` toast 渲染/关闭断言；`window.__dshTtsToast` 测试钩子。
+- **E-RVC 降级（E4 补充）**：
+  - **一键降级（始终可用）**：RVC 模式下错误 toast 带「改用 Edge TTS 朗读」动作 →
+    `speakText(..., { provider: 'edge-tts' })` 以 RVC 底噪音色重读全文（长文走 Edge 分块管线）。
+  - **自动降级（opt-in，默认关）**：设置面板 RVC 区新增 `rvcAutoFallback`（持久化到
+    `dsh-tts-settings`）；开启后 RVC 短/分块发起失败自动以 Edge 重试 + warn toast。
+    默认关理由：RVC 宣传"全本地不上传"，自动外发 Edge 属隐私语义变化，需用户显式同意。
+  - `rpcSpeak(text, voice, provider)` 增加 provider 覆盖参数，不翻转持久化 provider。
+  - 边界（不做）：分块**中途**某块失败不自动重启整任务（stop + toast，动作按钮可整篇重读）。
+  - 测试：smoke「speak rvc unreachable → `host.rvcUnreachable` i18n 错误」；
+    client-load `rvcAutoFallback` 持久化 round-trip + reset。
+- **E-splitter（建议 #4）**：`splitText` 硬化——
+  - 原子 token（URL / 邮箱 / 小数 / 版本号）placeholders 保护，句子/段落切分不再被
+    "3.14" 里的 `.` 误拆；硬切滑到空白/标点边界且不切 placeholder（`safeEnd`）；
+  - 末尾 <8 字孤儿块并入前一块（≤ maxChars 时）；
+  - 导出 `__test = { splitText }` 供直测。测试：smoke 增加 6 条 splitText 单测。
+- 卫生：清理 zh 字典重复 `voice.*`/`err.*` 键（PR-REVIEW 遗留）。
+- 运行：`smoke 60 · live 18 · patch 4 · i18n 6 · client-load 36`，`npm run test:all` 全绿；
+  README/README.zh「边界行为」「设置持久化」已同步。

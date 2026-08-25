@@ -136,15 +136,23 @@ derived from the voice locale, one retry on abnormal (1006) closures. Audio is
 - Audio is **autoplay-unlocked** on the first user gesture (Web Audio context
   resumed + silent clip) so reads aren't silently blocked by browser policy.
 - `Esc` / `S` (outside an input) stops the current read-aloud.
-- Synthesis / playback failures silently reset the icon state (the preview
-  panel shows an inline error message).
+- Synthesis / playback failures **surface a themed toast** (message read-aloud and
+  auto-read no longer fail silently; the preview panel keeps its inline error).
+  In RVC mode the error toast carries a one-click **"read with Edge TTS instead"**
+  action; with the opt-in toggle **"auto-switch to Edge TTS when RVC fails"** in
+  the RVC settings (off by default — RVC is fully local, auto-fallback sends the
+  text to Microsoft's endpoint), a failed RVC read silently retries with the RVC
+  base voice via Edge TTS and shows a warn toast.
+- **Smart chunking** never splits URLs / emails / decimals / versions ("3.14")
+  mid-token — hard cuts slide to word/punctuation boundaries, and a tiny trailing
+  sentence merges into the previous chunk instead of reading like a stutter.
 
 ## Settings persistence
 
-Voice, auto-read toggle, provider and RVC settings are **persisted to
-localStorage** (`dsh-tts-settings`) and restored on load, surviving refresh /
-reopen. A "Reset to defaults" button in the settings panel restores defaults and
-clears the stored settings.
+Voice, auto-read toggle, provider, the RVC fallback toggle and RVC settings are
+**persisted to localStorage** (`dsh-tts-settings`) and restored on load,
+surviving refresh / reopen. A "Reset to defaults" button in the settings panel
+restores defaults and clears the stored settings.
 
 ## Custom voice (RVC)
 
@@ -172,6 +180,42 @@ portable runtime, settings reference and troubleshooting — lives in the
   console).
 
 > RVC-specific troubleshooting: [RVC Guide → Troubleshooting](docs/RVC-GUIDE.md#troubleshooting).
+
+## FAQ
+
+**Q: Is it big?**
+- Default experience (Edge TTS): the plugin itself is tiny (MB scale) — **no service or model to download**.
+- You only need a local RVC portable package if you want custom voices (RVC). Its size mostly comes from the **bundled offline Python runtime + inference deps + pretrained models**:
+  | Platform | Archive | Extracted |
+  |---|---:|---:|
+  | macOS (Apple Silicon) | ~660 MB | ~1.3 GB |
+  | Windows (CPU-minimal) | ~1–2 GB | ~2–3 GB |
+  | Windows (with NVIDIA GPU) | ~6 GB | ~7 GB |
+- These are self-contained runtimes; the **full RVC WebUI is 7.8 GB** — we don't ship the WebUI / training / realtime parts this plugin doesn't need.
+
+**Q: Are the dependencies big?**
+- The runtime is heavy but **you don't install anything**: the portable package bundles Python, ffmpeg (Windows) / PyAV (macOS), and all inference deps. Unzip and run — no compile, no env setup.
+- The plugin itself has minimal deps and only loads what it actually uses.
+
+**Q: Do I need a local TTS model?**
+- With the default Edge TTS: **no** — it synthesizes online (free).
+- With custom voices (RVC): you need **your own** RVC voice model (`.pth`), optionally a `.index`; the pretrained hubert / rmvpe are already bundled — you only provide your trained model.
+
+**Q: Is it easy to install?**
+- Install the plugin normally, then for RVC: download the portable package for your platform → unzip → run the launcher (double-click `.command` on macOS, `.bat` on Windows) → drop your `.pth` into `assets/weights` → pick it in the plugin panel.
+- No compile, no manual Python/ffmpeg install. Note: **the first macOS launch is slow (tens of seconds)** while macOS scans the extracted runtimes (one-time); later launches take a few seconds.
+
+**Q: Do I need a paid API?**
+- No. Edge TTS is free (no API key) and RVC runs fully locally and free.
+- Note: Edge TTS is Microsoft's public client-side, free capability — fine for personal use; check Microsoft's terms for commercial / heavy usage.
+
+**Q: Did this modify the DSH core?**
+- No. It's an **independent plugin** loaded through dsh's plugin mechanism. It doesn't touch the DSH main program and can be installed / paused / uninstalled anytime without affecting DSH or other plugins.
+
+**Other common questions**
+- **Do I need a GPU?** No — CPU works. For speed you can use Apple Silicon MPS (macOS) or an NVIDIA GPU (Windows, which needs the bigger CUDA torch build).
+- **Privacy?** RVC conversion is fully local — audio never leaves your machine. Edge TTS sends the text-to-read to Microsoft's endpoint for online synthesis (assess which voice before choosing).
+- **Apple Silicon only?** The macOS build is arm64 (M1–M5); Intel Macs would need a separate x86_64 build.
 
 ## UI language (i18n)
 
