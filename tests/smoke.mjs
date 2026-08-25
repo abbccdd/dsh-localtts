@@ -704,21 +704,23 @@ if (speakRoute && audioRoute) {
   const notifyRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/notify');
   check('plugin registers notify route', notifyRoute !== undefined);
   if (notifyRoute) {
-    // simulate the host session/event firehose: approval/asked + approval/decided
-    emitFake('session/event', { id: 's1' }, { type: 'approval/asked', id: 'ap-1', toolName: 'bash', reason: '需要运行一条命令' });
-    emitFake('session/event', { id: 's2' }, { type: 'approval/asked', id: 'ap-1', toolName: 'bash', reason: '重复事件' }); // dup id -> ignored
-    emitFake('session/event', { id: 's3' }, { type: 'approval/decided', id: 'ap-2', outcome: 'granted' });
-    emitFake('session/event', { id: 's4' }, { type: 'msg/markdown', text: '非审批事件，应被忽略' });
+    // simulate the host session/event firehose with the REAL SessionEvent
+    // shape ({ type, seq, time, data }); an approval request and its decision
+    // share the same id and must BOTH be announced (dedup by type:id).
+    emitFake('session/event', { id: 's1' }, { type: 'approval/asked', seq: 1, time: 1, data: { id: 'ap-1', toolName: 'bash', reason: '需要运行一条命令' } });
+    emitFake('session/event', { id: 's2' }, { type: 'approval/asked', seq: 2, time: 2, data: { id: 'ap-1', toolName: 'bash', reason: '重复事件' } }); // dup (type,id) -> ignored
+    emitFake('session/event', { id: 's3' }, { type: 'approval/decided', seq: 3, time: 3, data: { id: 'ap-1', outcome: 'allowed-once' } }); // same id, different type -> announced
+    emitFake('session/event', { id: 's4' }, { type: 'msg/markdown', seq: 4, time: 4, data: { text: '非审批事件，应被忽略' } });
 
     const n0 = await call(notifyRoute, mockReq('/dsh-tts-api/notify?s=0'), mockRes());
     const n0d = JSON.parse(n0.body);
-    check('notify returns queued approval events (dedup by id)',
+    check('notify queues approval pair (dedup by type:id, not id)',
       n0.head.code === 200 && n0d.items.length === 2 && n0d.latest === 2, n0.body);
     const first = n0d.items[0];
     check('notify item carries kind+toolName+reason',
       first && first.kind === 'approval' && first.toolName === 'bash' && first.reason === '需要运行一条命令', JSON.stringify(first));
     const second = n0d.items[1];
-    check('notify approval-decided carries outcome',
+    check('notify approval-decided maps allowed-once -> granted',
       second && second.kind === 'approval-decided' && second.outcome === 'granted', JSON.stringify(second));
 
     const n2 = await call(notifyRoute, mockReq('/dsh-tts-api/notify?s=2'), mockRes());
@@ -727,17 +729,19 @@ if (speakRoute && audioRoute) {
     const n1d = JSON.parse(n1.body);
     check('notify since=1 returns only later item', n1d.items.length === 1 && n1d.items[0].kind === 'approval-decided', n1.body);
 
-    // pure ingest guards: null / missing id / unknown types are ignored
+    // pure ingest guards: null / missing id / unknown types are ignored; the
+    // nested data shape is the real contract (top-level is the flat fallback)
     const ing = plugin.__test && plugin.__test.ingestSessionEvent;
     const snap = () => (plugin.__test && plugin.__test.notify()) || {};
     check('__test.ingestSessionEvent exposed', typeof ing === 'function');
     if (typeof ing === 'function') {
       ing(null);
       ing('junk');
-      ing({ type: 'approval/asked' });           // no id -> ignored
-      ing({ type: 'approval/asked', id: 'ap-3' }); // valid, added
+      ing({ type: 'approval/asked', data: {} });                    // no id -> ignored
+      ing({ type: 'approval/asked', id: 'ap-3' });                  // flat fallback -> valid
+      ing({ type: 'approval/decided', data: { id: 'ap-4', outcome: 'cancelled' } }); // -> settled
       const s = snap();
-      check('ingestSessionEvent guards empty ids', s.queued === 3 && s.seq === 3, JSON.stringify(s));
+      check('ingestSessionEvent guards empty ids + flat fallback', s.queued === 4 && s.seq === 4, JSON.stringify(s));
     }
   }
 }
