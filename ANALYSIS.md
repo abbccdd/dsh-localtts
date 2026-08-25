@@ -155,3 +155,40 @@
 - 卫生：清理 zh 字典重复 `voice.*`/`err.*` 键（PR-REVIEW 遗留）。
 - 运行：`smoke 60 · live 18 · patch 4 · i18n 6 · client-load 36`，`npm run test:all` 全绿；
   README/README.zh「边界行为」「设置持久化」已同步。
+
+## 13. 新增候选评估（2026-08-25，未开工）
+
+> 依据 harness 源码核查（dsh-user-approval / dsh-cordis-host-runner / dsh-client-runtime），
+> 结论：**A1 审批语音播报建议做；A2 VAD 语音打断做最小可用版或暂缓**。
+
+### A1. Agent 事件 / 审批语音提醒播报（建议做，中高价值）
+
+- **功能**：会话内出现需用户注意的事件时语音播报——
+  - 审批请求（`approval/asked`：id/toolName/reason）→ 播报「需要审批：{tool}」；
+  - 审批结果（`approval/decided`）；后台任务/子代理完成 → 「任务已完成」。
+- **期望（验收级）**：设置面板新增「事件语音提醒」区（总开关 + 事件类型勾选 + 复用 Edge 音色表）；
+  审批请求**打断**当前朗读（高优先级），任务完成/审批结果**不打断**（空闲才播报）；同一事件
+  id 去重；内容本地化（zh/en）、工具名/原因截断。
+- **可行性（已核实）**：`approval/asked`/`approval/decided` 是 `SessionEventMap` 的会话事件
+  （`dsh-user-approval/lib/types/index.d.ts`），事件流已有 Host→客户端下行通道；插件 Host 沙箱
+  显式开放 `ctx.on` / `ctx.provide`（`dsh-cordis-host-runner` 沙箱说明），Host 侧订阅事件可行。
+  播报复用现有 `/speak` 短句管线；客户端轮询轻量 `/dsh-tts-api/events?since=N` 拉新事件；
+  播报用独立 source（如 `'notify'`），与自动朗读优先级策略分离。
+- **风险**：事件→插件 ctx 的确切接线需 spike 验证（per-session 事件作用域）；与自动朗读的
+  打断/排队策略要显式定义；新增 i18n 键。
+- **建议分期**：先做「审批请求播报（打断式、默认关）」；任务完成播报二期。
+
+### A2. VAD 语音打断开关（中低优先，做最小版或暂缓）
+
+- **功能**：开启后朗读期间检测到用户说话（麦克风），自动停止当前朗读（hands-free 打断）。
+  设置：总开关（默认关）+ 灵敏度（低/中/高）。
+- **期望（验收级）**：首次开启弹 `getUserMedia` 权限（本地地址属安全上下文）；朗读中检测到
+  持续 ~300–500ms 语音能量 → 停止（复用 `stopSpeaking`）；不朗读时麦克风不监听（无隐私常驻）；
+  `echoCancellation:true` + 能量阈值 + 去抖（避免爆音/键盘误触发）。
+- **必要性评估（如实）**：核心**回声硬伤**——TTS 从扬声器播放，麦克风会收到朗读声自身，
+  能量 VAD 会**自触发打断**；浏览器 `echoCancellation` 对 Web Audio 调度的播放不保证可靠，
+  高音量外放几乎必然自触发。缓解不根治：仅朗读中启用 + 持续时长阈值 + 灵敏度档 +
+  README 标注「外放易自触发，建议耳机/低音量」。
+- **成本/价值**：mic 权限 UX + 能量 VAD（无需模型）+ 接线（复用 stopSpeaking），成本中等；
+  价值仅限双手占用场景。结论：**低优先**；要做先做最小可用版并明示限制，否则建议暂缓。
+- 备注：键鼠场景已有打断替代（朗读按钮/Esc/S/迷你暂停），VAD 只为免手场景。
