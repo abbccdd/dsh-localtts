@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="Awesome"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-22%2B-blue" alt="node"></a>
-  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-44%20passed-success" alt="tests"></a>
+  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-68%20passed-success" alt="tests"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts"><img src="https://img.shields.io/github/stars/1624318455/dsh-plugin-tts" alt="stars"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts/commits/main"><img src="https://img.shields.io/github/last-commit/1624318455/dsh-plugin-tts" alt="last commit"></a>
 </p>
@@ -71,6 +71,14 @@ RVC runtime** means no RVC WebUI install is needed.
 10. **Streaming long reads (Edge too)**: long plain-Edge reads also stream
     progressively (first chunk plays while the rest synthesize), reusing the
     gapless chunked pipeline — no more waiting for full synthesis.
+11. **Approval voice alerts**: optional voice broadcast of Agent approval events.
+    When enabled, an approval request (`approval/asked`) is announced aloud and
+    **interrupts the current read** (the agent is waiting on the decision); an
+    approval result (`approval/decided`) is announced only when idle. Alerts
+    always use Edge TTS with their own alert voice (independent of the RVC
+    service), are deduplicated by approval id, and off by default. (Scope note:
+    task-completion announcements are deferred to a later phase — the jobs
+    subsystem has no session-event channel this plugin can observe yet.)
 
 ## Requirements
 
@@ -146,13 +154,19 @@ derived from the voice locale, one retry on abnormal (1006) closures. Audio is
 - **Smart chunking** never splits URLs / emails / decimals / versions ("3.14")
   mid-token — hard cuts slide to word/punctuation boundaries, and a tiny trailing
   sentence merges into the previous chunk instead of reading like a stutter.
+- **Approval voice alerts** (opt-in): the Host subscribes to the session/event
+  firehose (`approval/asked` / `approval/decided`), dedupes by approval id, and
+  the client polls `/dsh-tts-api/notify?s=N` — the first poll baseline-syncs the
+  cursor so a page refresh never replays stale alerts; announcements are silent
+  on failure (no error toasts while the agent loops).
 
 ## Settings persistence
 
-Voice, auto-read toggle, provider, the RVC fallback toggle and RVC settings are
-**persisted to localStorage** (`dsh-tts-settings`) and restored on load,
-surviving refresh / reopen. A "Reset to defaults" button in the settings panel
-restores defaults and clears the stored settings.
+Voice, auto-read toggle, provider, the RVC fallback toggle, the approval-alert
+settings and RVC settings are **persisted to localStorage**
+(`dsh-tts-settings`) and restored on load, surviving refresh / reopen. A "Reset
+to defaults" button in the settings panel restores defaults and clears the
+stored settings.
 
 ## Custom voice (RVC)
 

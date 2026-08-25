@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="Awesome"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-22%2B-blue" alt="node"></a>
-  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-44%20passed-success" alt="tests"></a>
+  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-68%20passed-success" alt="tests"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts"><img src="https://img.shields.io/github/stars/1624318455/dsh-plugin-tts" alt="stars"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts/commits/main"><img src="https://img.shields.io/github/last-commit/1624318455/dsh-plugin-tts" alt="last commit"></a>
 </p>
@@ -70,6 +70,10 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
 9. **朗读选中文本**：在消息里选中文本会在选区上方出现「朗读选中」悬浮按钮，点按只朗读该选中片段。
 10. **长读流式（Edge 同样支持）**：纯 Edge 长文本也走自适应分块渐进播放——第一块先响、其余边播边合成，
     不再干等整段合成完成。
+11. **审批语音提醒**：可选地把 Agent 审批事件用语音播报。开启后：审批请求（`approval/asked`）会
+    **打断当前朗读**（Agent 正在等这个决定），审批结果（`approval/decided`）仅在空闲时播报。
+    播报固定走 Edge TTS（不依赖 RVC 服务）、用自己的提醒音色、按审批 id 去重、默认关闭。
+    （范围说明：任务完成播报留待后续阶段——jobs 子系统目前没有本插件可观察的会话事件通道。）
 
 ## 要求
 
@@ -136,12 +140,16 @@ TTS 引擎：worker 协议镜像 [node-edge-tts@1.2.10](https://github.com/Schne
   并弹 warn toast 提示。
 - **智能分句**：分块切分绝不切断 URL / 邮箱 / 小数 / 版本号（如"3.14"）；硬切会滑到
   词/标点边界；末尾的极短句会并入前一块，避免听感像结巴。
+- **审批语音提醒（opt-in）**：Host 订阅 `session/event` 火线（`approval/asked` /
+  `approval/decided`）并按审批 id 去重；客户端轮询 `/dsh-tts-api/notify?s=N`——
+  首次轮询只做基线同步（刷新不重播旧提醒）；播报失败静默（不弹错误 toast，避免 Agent
+  循环期间刷屏）。
 
 ## 设置持久化
 
-音色、自动朗读开关、TTS 提供者、RVC 降级开关与 RVC 配置会**持久化到
-localStorage**（`dsh-tts-settings`），刷新 / 重开面板不丢。设置面板提供
-「恢复默认设置」按钮，一键复位并清除已存设置。
+音色、自动朗读开关、TTS 提供者、RVC 降级开关、审批语音提醒设置与 RVC 配置会
+**持久化到 localStorage**（`dsh-tts-settings`），刷新 / 重开面板不丢。设置面板
+提供「恢复默认设置」按钮，一键复位并清除已存设置。
 
 ## RVC 自定义音色
 

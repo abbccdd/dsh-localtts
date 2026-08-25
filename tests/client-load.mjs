@@ -122,6 +122,7 @@ try {
     // re-running the factory so loadSettings() applies it
     memStore.set('dsh-tts-settings', JSON.stringify({
       autoRead: true, voice: 'zh-CN-YunyangNeural', provider: 'rvc', rvcAutoFallback: true,
+      notify: { enabled: true, approval: false, approvalResult: true, voice: 'zh-CN-YunxiNeural' },
       rvc: { baseUrl: 'http://127.0.0.1:9999', model: '/x.pth', indexRate: 0.5 },
     }));
     const srcS = globalThis.__dshTtsClientSrc;
@@ -131,11 +132,13 @@ try {
     const s2 = S2.get();
     check('settings loaded from localStorage', s2.autoRead === true && s2.voice === 'zh-CN-YunyangNeural' && s2.provider === 'rvc', JSON.stringify(s2));
     check('rvcAutoFallback loaded from localStorage', s2.rvcAutoFallback === true, 'rvcAutoFallback=' + s2.rvcAutoFallback);
+    check('notify settings loaded from localStorage', s2.notify.enabled === true && s2.notify.approval === false && s2.notify.approvalResult === true && s2.notify.voice === 'zh-CN-YunxiNeural', JSON.stringify(s2.notify));
     check('rvc settings loaded from localStorage', s2.rvc.baseUrl === 'http://127.0.0.1:9999' && s2.rvc.model === '/x.pth' && s2.rvc.indexRate === 0.5, JSON.stringify(s2.rvc));
     // reset: restore defaults + drop stored settings
     S2.reset();
     const r = S2.get();
     check('reset restores defaults', r.autoRead === false && r.voice === 'zh-CN-XiaoxuanNeural' && r.provider === 'edge-tts' && r.rvcAutoFallback === false, JSON.stringify(r));
+    check('reset restores notify defaults', r.notify.enabled === false && r.notify.approval === true && r.notify.approvalResult === false && r.notify.voice === 'zh-CN-XiaoxuanNeural', JSON.stringify(r.notify));
     check('reset clears stored settings', !memStore.has('dsh-tts-settings'));
     // corrupt stored JSON must not crash; falls back to defaults
     memStore.set('dsh-tts-settings', '{not json');
@@ -253,6 +256,30 @@ if (!failed) {
     }
   } else {
     check('toast hook exposed (__dshTtsToast)', false, 'hook missing');
+  }
+}
+
+// Settings tab renders the approval voice-alert module (title visible).
+{
+  const comp = injectedComponents.find(c => c.slot === 'settings.plugins.tab');
+  if (comp) {
+    try {
+      const allText = n => {
+        if (!n) return '';
+        if (typeof n === 'string' || typeof n === 'number') return String(n);
+        const ch = n.children;
+        if (Array.isArray(ch)) return ch.map(allText).join('');
+        return '';
+      };
+      const h = makeHookCtx();
+      const orig = { useState: react.useState, useEffect: react.useEffect, useRef: react.useRef, useMemo: react.useMemo };
+      react.useState = h.useState; react.useEffect = h.useEffect; react.useRef = h.useRef; react.useMemo = h.useMemo;
+      const node = comp.fn()({ useSession: sel => sel({ nodes: [] }), messageId: 'm1' });
+      react.useState = orig.useState; react.useEffect = orig.useEffect; react.useRef = orig.useRef; react.useMemo = orig.useMemo;
+      check('settings renders approval voice-alert module', allText(node).includes('事件语音提醒') && allText(node).includes('启用审批语音提醒'), undefined);
+    } catch (e) {
+      check('settings renders approval voice-alert module', false, String(e && e.stack || e).slice(0, 200));
+    }
   }
 }
 

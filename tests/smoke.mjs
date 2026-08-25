@@ -15,6 +15,11 @@ import { fileURLToPath } from 'node:url';
 import { startMockRegistry } from './mock-registry.mjs';
 
 const routes = [];
+const fakeEventListeners = new Map(); // name -> [fn] captured via ctx.on
+
+function emitFake(name, ...args) {
+  for (const fn of (fakeEventListeners.get(name) || []).slice()) fn(...args);
+}
 
 function fakeCtx() {
   return {
@@ -32,7 +37,19 @@ function fakeCtx() {
       }
       return undefined;
     },
-    effect() {}
+    effect(fn) { fn?.(); }, // apply the effect callback (registers disposers / event subscriptions) like the host does
+    on(name, fn) {
+      const arr = fakeEventListeners.get(name) || [];
+      arr.push(fn);
+      fakeEventListeners.set(name, arr);
+      return () => {
+        const a = fakeEventListeners.get(name);
+        if (a) {
+          const i = a.indexOf(fn);
+          if (i >= 0) a.splice(i, 1);
+        }
+      };
+    }
   };
 }
 
@@ -680,6 +697,49 @@ if (speakRoute && audioRoute) {
     badSpeakData.error && typeof badSpeakData.error === 'string' &&
     badSpeakData.i18n && (badSpeakData.i18n.code === 'host.rvcUnreachable' || badSpeakData.i18n.code === 'host.rvcHttpFail'),
     badSpeak.body);
+}
+
+// --- approval voice alerts (session/event firehose -> /notify queue) ---
+{
+  const notifyRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/notify');
+  check('plugin registers notify route', notifyRoute !== undefined);
+  if (notifyRoute) {
+    // simulate the host session/event firehose: approval/asked + approval/decided
+    emitFake('session/event', { id: 's1' }, { type: 'approval/asked', id: 'ap-1', toolName: 'bash', reason: '需要运行一条命令' });
+    emitFake('session/event', { id: 's2' }, { type: 'approval/asked', id: 'ap-1', toolName: 'bash', reason: '重复事件' }); // dup id -> ignored
+    emitFake('session/event', { id: 's3' }, { type: 'approval/decided', id: 'ap-2', outcome: 'granted' });
+    emitFake('session/event', { id: 's4' }, { type: 'msg/markdown', text: '非审批事件，应被忽略' });
+
+    const n0 = await call(notifyRoute, mockReq('/dsh-tts-api/notify?s=0'), mockRes());
+    const n0d = JSON.parse(n0.body);
+    check('notify returns queued approval events (dedup by id)',
+      n0.head.code === 200 && n0d.items.length === 2 && n0d.latest === 2, n0.body);
+    const first = n0d.items[0];
+    check('notify item carries kind+toolName+reason',
+      first && first.kind === 'approval' && first.toolName === 'bash' && first.reason === '需要运行一条命令', JSON.stringify(first));
+    const second = n0d.items[1];
+    check('notify approval-decided carries outcome',
+      second && second.kind === 'approval-decided' && second.outcome === 'granted', JSON.stringify(second));
+
+    const n2 = await call(notifyRoute, mockReq('/dsh-tts-api/notify?s=2'), mockRes());
+    check('notify incremental cursor returns nothing new', JSON.parse(n2.body).items.length === 0, n2.body);
+    const n1 = await call(notifyRoute, mockReq('/dsh-tts-api/notify?s=1'), mockRes());
+    const n1d = JSON.parse(n1.body);
+    check('notify since=1 returns only later item', n1d.items.length === 1 && n1d.items[0].kind === 'approval-decided', n1.body);
+
+    // pure ingest guards: null / missing id / unknown types are ignored
+    const ing = plugin.__test && plugin.__test.ingestSessionEvent;
+    const snap = () => (plugin.__test && plugin.__test.notify()) || {};
+    check('__test.ingestSessionEvent exposed', typeof ing === 'function');
+    if (typeof ing === 'function') {
+      ing(null);
+      ing('junk');
+      ing({ type: 'approval/asked' });           // no id -> ignored
+      ing({ type: 'approval/asked', id: 'ap-3' }); // valid, added
+      const s = snap();
+      check('ingestSessionEvent guards empty ids', s.queued === 3 && s.seq === 3, JSON.stringify(s));
+    }
+  }
 }
 
 const failed = results.filter((r) => !r.ok);
