@@ -1,275 +1,154 @@
-<p align="center">
-  <img src="logo.png" alt="dsh-plugin-tts" width="140" />
-</p>
+# DeepSeek Harness Local AI TTS Plugin
 
-<h1 align="center">dsh-plugin-tts</h1>
+[简体中文](README.zh-CN.md) · Version **0.1.4 release candidate** · MIT
 
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
-  <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="Awesome"></a>
-  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-22%2B-blue" alt="node"></a>
-  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-68%20passed-success" alt="tests"></a>
-  <a href="https://github.com/1624318455/dsh-plugin-tts"><img src="https://img.shields.io/github/stars/1624318455/dsh-plugin-tts" alt="stars"></a>
-  <a href="https://github.com/1624318455/dsh-plugin-tts/commits/main"><img src="https://img.shields.io/github/last-commit/1624318455/dsh-plugin-tts" alt="last commit"></a>
-</p>
+Read DeepSeek Harness assistant replies with **IndexTTS 2.5** or **GPT-SoVITS** started by the plugin. The user supplies the existing Python/project/model configuration; the plugin starts a thin JSONL worker and sends one natural sentence per request. No WebUI page is required.
 
-## Links
+Based on [1624318455/dsh-plugin-tts](https://github.com/1624318455/dsh-plugin-tts), commit `ec0cf87ef52abb81ae91681a966aa3096365e631`. Its message buttons, Auto Read toggle, Edge/RVC providers, pause/stop controls, settings and Harness API integration are reused. See [NOTICE](NOTICE.md).
 
-- **[中文 README](README.zh.md)**（简体中文）
-- **[RVC Custom Voice Guide](docs/RVC-GUIDE.md)** — custom voices · chunked progressive playback · compact index · voice packs · portable runtime
-- **[User Guide (执行手册)](docs/USER-GUIDE.md)** — step-by-step, for first-time users
-- **[Adaptive chunked playback design](docs/adaptive-chunked-playback.md)** — how gapless long reads work
+**This is a connector and process launcher, not a model distribution.** It does not install, trim, retrain or modify TTS models. It only starts the executable and worker command that you configure. No checkpoints, reference recordings, voice caches, Python environments or generated audio are included.
 
----
+```text
+Harness assistant events → SentenceBuffer → local process provider
+                                               ↓ JSONL stdin/stdout
+                                    IndexTTS / GPT-SoVITS adapter
+                                               ↓ audio / PCM
+                                        Browser Web Audio
+```
 
-# dsh-plugin-tts — Edge TTS + RVC voice for DeepSeek Harness
+## Requirements and support
 
-A dual-sided (Host + Web UI) DeepSeek Harness plugin that reads assistant replies
-aloud — Microsoft Edge's free online TTS out of the box, or **your own RVC voice
-models** for custom voices. Long replies stream with **gapless adaptive chunked
-playback**; voices install **one-click from a voice-pack registry**; a **portable
-RVC runtime** means no RVC WebUI install is needed.
+- DeepSeek Harness web profile with `webServer`, `session/event` and client UI slots. Node.js 22+ and a browser with Web Audio.
+- An existing IndexTTS 2.5 or GPT-SoVITS installation, its Python environment and model files.
+- A worker command implementing the [JSONL worker protocol](docs/PROCESS-WORKER-PROTOCOL.md). Thin examples are included in `adapters/`; they import/start the user's existing model project and do not contain weights.
 
-> 📖 **First time? See the [user guide (执行手册)](docs/USER-GUIDE.md)** — every step
-> covers "what / how / how to tell it worked": read-aloud, RVC voices and
-> voice-pack downloads.
-
-## Features
-
-1. **Read-aloud button** on every finalized assistant message (in the
-   copy / feedback / branch action row): click to speak that message (the
-   button shows an animated equalizer), click again to stop.
-2. **Auto-read toggle** in the composer tool row (between the command and the
-   access-mode buttons): when on, every newly completed assistant reply is
-   read aloud automatically (the toggle gets a circular highlight); when off,
-   nothing is auto-read.
-3. **Voice settings panel** under 设置 → 插件 → 语音:
-   - **TTS provider**: Edge TTS (free, no API key) / custom RVC voice
-   - **Voice**: 22 live-verified Edge TTS voices (default 晓萱 zh-CN-XiaoxuanNeural)
-   - **Sound tuning**: rate / pitch / volume (0 = default)
-   - **Voice packs**: one-click install of voices from a registry
-   - **Preview**: type text and press the play (triangle) button — a spinning
-     loader shows while it is synthesizing/playing (click again to stop),
-     failures show an inline message.
-4. **RVC custom voices**: read with your own trained RVC models, computed
-   locally (upload base audio, index-free mode, advanced params — see the
-   [RVC guide](docs/RVC-GUIDE.md)).
-5. **Gapless long reads**: adaptive chunked progressive playback — probe-calibrated
-   chunk size, play-while-converting, Web Audio sample-accurate joins, no gaps
-   between chunks (see the [design doc](docs/adaptive-chunked-playback.md)).
-6. **Mini player** while reading: pause / resume + playback speed (1x / 1.25x /
-   1.5x) on the message's action row; chunked long reads surface a visible
-   "chunk x/y" counter.
-7. **Themed tooltips & RVC onboarding**: hover tooltips use the app's theme
-   tokens (`--dsw-*`); the RVC panel opens with a first-time 3-step guide
-   (per-OS startup commands + one-click diagnostics).
-8. **Download audio**: a download button on each message saves the synthesized
-   audio (Edge base or RVC-converted) as an MP3 — reuses the in-session cache so
-   a just-read message downloads instantly.
-9. **Read selected text**: selecting text in a message shows a floating
-   "朗读选中" chip — click it to read just that selection.
-10. **Streaming long reads (Edge too)**: long plain-Edge reads also stream
-    progressively (first chunk plays while the rest synthesize), reusing the
-    gapless chunked pipeline — no more waiting for full synthesis.
-11. **Approval voice alerts**: optional voice broadcast of Agent approval events.
-    When enabled, an approval request (`approval/asked`) is announced aloud and
-    **interrupts the current read** (the agent is waiting on the decision); an
-    approval result (`approval/decided`) is announced only when idle. Alerts
-    always use Edge TTS with their own alert voice (independent of the RVC
-    service), are deduplicated by approval id, and off by default. (Scope note:
-    task-completion announcements are deferred to a later phase — the jobs
-    subsystem has no session-event channel this plugin can observe yet.)
-
-## Requirements
-
-- DeepSeek Harness `web` profile (`dsh web`)
-- Node.js >= 22 (the worker uses the native `WebSocket`)
-- For **RVC custom voices only**: a local RVC inference environment (an RVC WebUI
-  or the portable runtime) and a running `rvc-server.py`. macOS users: see the
-  [RVC Guide](docs/RVC-GUIDE.md) → "启动本地 RVC 服务" and the
-  [User Guide](docs/USER-GUIDE.md) §4.2.
+The plugin discovers known paths only inside the selected local project/wrapper folder. It does not scan whole disks, install dependencies or open WebUI pages. Detected and manually configured paths are kept in browser settings.
 
 ## Install
 
-```sh
-# published form:
-dsh plugin --profile web add "github:1624318455/dsh-plugin-tts#main"
-# or local development:
-dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
-```
-
-Restart `dsh web`; the plugin then loads automatically as a profile bundle.
-
-## Voices (live-verified, Edge TTS)
-
-| Region | Voices |
-|---|---|
-| Simplified Chinese | Xiaoxuan 晓萱 · Xiaoyi 晓伊 · Yunxi 云希 · Yunyang 云扬 · Xiaoxiao 晓晓 · Yunjian 云健 · Yunxia 云夏 · liaoning-Xiaobei 晓北 · shaanxi-Xiaoni 晓妮 |
-| Taiwan | HsiaoChen 曉臻 · HsiaoYu 曉雨 · YunJhe 雲哲 |
-| Hong Kong | HiuGaai 曉佳 · HiuMaan 曉曼 · WanLung 雲龍 |
-| English | Aria · Jenny · Guy · Sonia (UK) |
-| Other | Nanami 七海 (ja-JP) · SunHi (ko-KR) · Denise (fr-FR) |
-
-> Note: legacy voices such as Xiaohan / Xiaomeng / Xiaorui / Xiaoshuang were
-> removed by the Edge endpoint (`1007 Unsupported voice`) and are not listed.
-
-## Architecture
-
-| Layer | Location | Role |
-|---|---|---|
-| Host | `lib/index.mjs` | Registers `/dsh-tts-api/speak` (synthesis / chunk queue), `/dsh-tts-audio/<id>` (audio), `/dsh-tts-api/rvc-*` (RVC inference / files / compact index / voice packs) webServer routes; runs a zero-dependency worker via `node -e` |
-| Client | `lib/client.js` | Hidden `<audio>` host in `shell.overlay` + the UI entries (read-aloud button / auto-read toggle / settings panel); talks to the Host through `fetch` |
-
-The TTS worker mirrors [node-edge-tts@1.2.10](https://github.com/SchneeHertz/node-edge-tts):
-`Sec-MS-GEC` query params (ticks rounded to the 5-minute boundary),
-`Sec-MS-GEC-Version=1-143.0.3650.75`, `Path:audio` binary framing, `xml:lang`
-derived from the voice locale, one retry on abnormal (1006) closures. Audio is
-`audio-24khz-48kbitrate-mono-mp3`.
-
-## Edge cases handled
-
-- Clicking the read button of the message being auto-read stops it; another
-  message's button switches to manual reading.
-- Disabling auto-read never interrupts a manual read; it stops auto reads.
-- A newly completed message (auto on) interrupts the current read; text-less
-  messages are skipped; session switches only stop auto reads.
-- Stopping / switching messages **eagerly cancels** the active RVC chunked job on
-  the Host, so the local conversion service stops scheduling new chunks and
-  releases GPU/memory promptly (no waiting for the lazy GC).
-- Repeatedly reading the same text + voice **reuses the in-session audio cache**
-  (no re-synthesis); if the cached backing file was cleaned by the OS, it
-  transparently re-synthesizes instead of serving a stale 404 URL.
-- If an Edge voice was removed by the endpoint (`1007 Unsupported voice`), the
-  voice is pruned from the picker and the plugin auto-falls back to the default.
-- Audio is **autoplay-unlocked** on the first user gesture (Web Audio context
-  resumed + silent clip) so reads aren't silently blocked by browser policy.
-- `Esc` / `S` (outside an input) stops the current read-aloud.
-- Synthesis / playback failures **surface a themed toast** (message read-aloud and
-  auto-read no longer fail silently; the preview panel keeps its inline error).
-  In RVC mode the error toast carries a one-click **"read with Edge TTS instead"**
-  action; with the opt-in toggle **"auto-switch to Edge TTS when RVC fails"** in
-  the RVC settings (off by default — RVC is fully local, auto-fallback sends the
-  text to Microsoft's endpoint), a failed RVC read silently retries with the RVC
-  base voice via Edge TTS and shows a warn toast.
-- **Smart chunking** never splits URLs / emails / decimals / versions ("3.14")
-  mid-token — hard cuts slide to word/punctuation boundaries, and a tiny trailing
-  sentence merges into the previous chunk instead of reading like a stutter.
-- **Approval voice alerts** (opt-in): the Host subscribes to the session/event
-  firehose (`approval/asked` / `approval/decided`), dedupes by approval id, and
-  the client polls `/dsh-tts-api/notify?s=N` — the first poll baseline-syncs the
-  cursor so a page refresh never replays stale alerts; announcements are silent
-  on failure (no error toasts while the agent loops).
-
-## Settings persistence
-
-Voice, auto-read toggle, provider, the RVC fallback toggle, the approval-alert
-settings and RVC settings are **persisted to localStorage**
-(`dsh-tts-settings`) and restored on load, surviving refresh / reopen. A "Reset
-to defaults" button in the settings panel restores defaults and clears the
-stored settings.
-
-## Custom voice (RVC)
-
-Use your locally trained **RVC model** for voice conversion: switch the TTS
-provider to "自定义音色（RVC）" in the settings panel. **First-time RVC users
-need two things**: a model file (`.pth`) and a running local RVC service — see
-the [RVC Guide](docs/RVC-GUIDE.md) or [User Guide](docs/USER-GUIDE.md) §4.2 for
-macOS/Windows/Linux startup commands. The full story — service startup, panel
-config, gapless chunked playback, compact index, voice-pack registry install,
-portable runtime, settings reference and troubleshooting — lives in the
-**[RVC Custom Voice Guide](docs/RVC-GUIDE.md)**.
-
-> Public pack registry example: [rvc-for-tts](https://github.com/1624318455/rvc-for-tts)
-> (设置 → 语音 → 音色包 → registry URL: `https://raw.githubusercontent.com/1624318455/rvc-for-tts/main`).
-
-## Troubleshooting (Edge TTS)
-
-- **403 / `Sec-MS-GEC` rejected**: the Edge endpoint protocol or version check
-  changed; update `CHROMIUM_FULL_VERSION` / `TRUSTED_CLIENT_TOKEN` inside the
-  worker in `lib/index.mjs`.
-- **`1007 Unsupported voice`**: the selected voice was removed from the
-  endpoint; pick one from the table above.
-- **No sound**: check system volume, the browser autoplay policy (interact
-  with the page once), or the synthesis logs (`[tts]` errors in the `dsh web`
-  console).
-
-> RVC-specific troubleshooting: [RVC Guide → Troubleshooting](docs/RVC-GUIDE.md#troubleshooting).
-
-## FAQ
-
-**Q: Is it big?**
-- Default experience (Edge TTS): the plugin itself is tiny (MB scale) — **no service or model to download**.
-- You only need a local RVC portable package if you want custom voices (RVC). Its size mostly comes from the **bundled offline Python runtime + inference deps + pretrained models**:
-  | Platform | Archive | Extracted |
-  |---|---:|---:|
-  | macOS (Apple Silicon) | ~660 MB | ~1.3 GB |
-  | Windows (CPU-minimal) | ~1–2 GB | ~2–3 GB |
-  | Windows (with NVIDIA GPU) | ~6 GB | ~7 GB |
-- These are self-contained runtimes; the **full RVC WebUI is 7.8 GB** — we don't ship the WebUI / training / realtime parts this plugin doesn't need.
-
-**Q: Are the dependencies big?**
-- The runtime is heavy but **you don't install anything**: the portable package bundles Python, ffmpeg (Windows) / PyAV (macOS), and all inference deps. Unzip and run — no compile, no env setup.
-- The plugin itself has minimal deps and only loads what it actually uses.
-
-**Q: Do I need a local TTS model?**
-- With the default Edge TTS: **no** — it synthesizes online (free).
-- With custom voices (RVC): you need **your own** RVC voice model (`.pth`), optionally a `.index`; the pretrained hubert / rmvpe are already bundled — you only provide your trained model.
-
-**Q: Is it easy to install?**
-- Install the plugin normally, then for RVC: download the portable package for your platform → unzip → run the launcher (double-click `.command` on macOS, `.bat` on Windows) → drop your `.pth` into `assets/weights` → pick it in the plugin panel.
-- No compile, no manual Python/ffmpeg install. Note: **the first macOS launch is slow (tens of seconds)** while macOS scans the extracted runtimes (one-time); later launches take a few seconds.
-
-**Q: Do I need a paid API?**
-- No. Edge TTS is free (no API key) and RVC runs fully locally and free.
-- Note: Edge TTS is Microsoft's public client-side, free capability — fine for personal use; check Microsoft's terms for commercial / heavy usage.
-
-**Q: Did this modify the DSH core?**
-- No. It's an **independent plugin** loaded through dsh's plugin mechanism. It doesn't touch the DSH main program and can be installed / paused / uninstalled anytime without affecting DSH or other plugins.
-
-**Other common questions**
-- **Do I need a GPU?** No — CPU works. For speed you can use Apple Silicon MPS (macOS) or an NVIDIA GPU (Windows, which needs the bigger CUDA torch build).
-- **Privacy?** RVC conversion is fully local — audio never leaves your machine. Edge TTS sends the text-to-read to Microsoft's endpoint for online synthesis (assess which voice before choosing).
-- **Apple Silicon only?** The macOS build is arm64 (M1–M5); Intel Macs would need a separate x86_64 build.
-
-## UI language (i18n)
-
-The settings panel has an **Interface language** selector at the top:
-**Auto (follow browser) / 中文 / English**.
-- Default "Auto" follows the browser/system language (Simplified Chinese and
-  others → Chinese, everything else → English).
-- Switching applies immediately and is **persisted** to localStorage
-  (`dsh-tts-lang`), surviving page reloads.
-- Covers the whole settings panel, bubble/read-aloud buttons, diagnostics,
-  voice-pack panel, plus RVC service errors/progress hints.
-
-## Development
+**This plugin can be installed and enabled alongside the original.** Its package, routes, settings and UI identifiers are independent. Detection of the original automatically enables Local companion mode; see below.
 
 ```sh
-node tests/smoke.mjs   # fake-ctx route registration + real Edge TTS synthesis + audio serve assertions
-npm run test:all       # full: smoke + live + patch + i18n + client-load
+dsh plugin --profile web add "github:abbccdd/dsh-localtts#main"
 ```
 
-Hot-reload after editing `lib/` (on Windows a `file:` install is a COPY, not a
-symlink, so the running dsh reads the profile copy):
+The above is a publication template, not an existing hosted release. To install the prepared local checkout now, replace the example checkout path with your own:
 
-```powershell
-Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-external\dsh-plugin-tts\lib\ -Recurse -Force
-# then refresh the browser (bundles are re-read from disk per request; never use pnpm install --force)
+```sh
+dsh plugin --profile web add "file:/path/to/dsh-plugin-local-ai-tts"
+dsh web
 ```
 
-## Known limits
+Restart `dsh web` and refresh its browser page after installation. On Windows a `file:` installation may be a copy; reinstall the local package after changing it. Do not edit Harness core files.
 
-- Voice / auto-read toggle / provider / RVC settings are persisted to
-  localStorage and survive refresh (see "Settings persistence" above); the
-  audio cache itself is in-session only (files live in the OS temp dir, cleaned
-  by the OS), so a full restart re-synthesizes the first read of each text.
-- Synthesized audio is written to the OS temp dir and cleaned by the OS.
-- zh/en **layout/visual** fitting (English text is longer; may wrap/overflow; theme
-  vars `--dsw-*`) must be eyeballed in the real dsh UI with the plugin loaded — this
-  plugin ships no standalone HTML (its UI is slot-injected by the dsh web host), so
-  it cannot be headless-screenshotted here (`tests/client-load.mjs` asserts the
-  in-memory render only, not real DOM/CSS).
+## Coexistence with the original plugin
+
+Without the original, this plugin offers Edge TTS, RVC, IndexTTS 2.5 (local) and GPT-SoVITS (local). When the original is detected, this plugin offers the local process providers only, leaving Edge/RVC, selection reading, generic shortcuts and approval alerts to the original. Its settings tab is **Local voice**, its message button is marked **Local**, and its toggle is **Local Auto Read**.
+
+Turn **off the original Auto Read before enabling Local Auto Read**. Local automatic speech is suspended while the original Auto Read is on or unknown. State changes cancel local automatic queues, but do not interrupt manual local reads. This is a polling guard, not an atomic lock across both players: do not start two manual readers together. This plugin cannot stop audio already playing in the original.
+
+The original has no public third-party Provider registration interface, so Local Runtime appears in a separate settings tab rather than being injected into the original dropdown. Neither the original code nor its settings are modified. An optional **Always provide local features only** setting handles older Harness versions or other forks; unknown original state keeps local automatic reading suspended.
+
+Settings, language and voice-pack state are isolated. A one-time, read-only copy of old TTS settings disables imported Auto Read and approval alerts. Saving/resetting/uninstalling this plugin does not change original settings. Restart Harness and refresh after changing plugin activation; older versions without inventory metadata need a refresh to clear a stale original settings getter. [Coexistence details and test boundaries](docs/COEXISTENCE.md).
+
+## Configure a local process (IndexTTS 2.5 or GPT-SoVITS)
+
+Open **Settings → Plugins → Voice · Local AI TTS**. A standard installation needs only three main fields:
+
+1. **Engine**: IndexTTS 2.5 or GPT-SoVITS.
+2. **Project folder**: paste the existing installation's absolute path. Leaving the field automatically discovers files; **Find files automatically** rescans. Common wrapper directories are supported.
+3. **Reference audio**: one candidate is filled automatically; multiple candidates require a choice. An external audio path can also be entered manually.
+
+The main panel also provides **Output language** and the selected model's own **speed control**. The first connection can take a while while the official model loads; keep the settings page open and avoid repeated clicks.
+
+No per-weight paths, launch arguments or JSON editing are needed. Changes save automatically; **Save settings** also saves explicitly.
+
+**Advanced settings are collapsed by default.** Expand them only for missing/ambiguous detection, an external Python/Conda environment or custom model paths. GPT-SoVITS reference transcripts and language settings are also here: some model versions require matching text, which cannot reliably be inferred from a filename. Arbitrary checkpoint files are never guessed.
+
+Paths belong to the **Harness Host**, not the browser device. Discovery checks a bounded set of local files without starting Python, installing dependencies or downloading models. **Test Connection** actually starts the worker. A worker response is not proof of successful synthesis: try a short preview as well.
+
+Rescanning the same project preserves manual overrides. Changing the engine or project clears stale launch paths, reference audio and transcript. Missing files are reported without cloud fallback.
+
+See [directory discovery and required files](docs/ENGINE-DISCOVERY.md) for the rules and official launch sources; [PROCESS-WORKER-PROTOCOL.md](docs/PROCESS-WORKER-PROTOCOL.md) documents custom workers.
+
+### Legacy HTTP compatibility
+
+Previously saved HTTP configurations remain supported internally. They are not the normal setup flow and do not start the external HTTP service. Its API base URL is not a project folder or WebUI URL; see the exact [legacy HTTP contract](docs/LOCAL-RUNTIME-PROTOCOL.md). Changing the project folder returns to the built-in process launcher.
+
+## Read, Auto Read, pause and stop
+
+1. Test the connection, then use the existing preview or assistant-message read button. Interact with the page once so the browser permits audio playback.
+2. Turn **Auto Read ON** in the composer. In companion mode, first turn OFF original Auto Read, then enable **Local Auto Read**. Only new assistant text in the active session is read; old messages are not replayed on page refresh.
+3. Each completed sentence is queued immediately. While Harness produces sentence 3, the Runtime can synthesize sentence 2 and the browser play sentence 1.
+4. The Local Runtime player stays available during streaming. **Pause/Resume** controls audio; **Stop** cancels pending work and suppresses the remaining automatic turn. Turning Auto Read OFF stops automatic reading but preserves a manual read.
+5. Changing engine/voice/endpoint stops old work. Repeated React renders, finalized messages and repeated event sequence numbers do not replay the same stream.
+
+Local Runtime uses a 55-character soft target and 70-character hard limit. Three short sentences always cause three requests. It never merges short sentences. Synthesis slower than speech can cause gaps. The settings panel exposes output language and the model's own speed control: IndexTTS uses its official `duration_factor` (0.50 is faster, 2.00 is slower), while GPT-SoVITS uses the matching WebUI `speed` / `speed_factor` range (0.60–1.65). Mini-player speed only changes browser playback rate. Audio download remains unavailable for Local Runtime. Full protocol and limits: [Local Runtime protocol](docs/LOCAL-RUNTIME-PROTOCOL.md).
+
+## Troubleshooting
+
+| Symptom | Action |
+| --- | --- |
+| Files missing / worker spawn failed | Rescan the project; check Python, model directory or API/YAML paths in Advanced, then Test Connection. |
+| Ready check says loading/unloaded/busy | Wait or manage Runtime state using its own controls. No automatic model loading is attempted. |
+| HTTP 404 / invalid JSON | Check protocol and base URL. A WebUI HTML page is not a Runtime endpoint. |
+| HTTP 401/403 | Runtime authorization is required or access was denied. This release does not import keys/tokens. |
+| HTTP 429/503 | Runtime is busy or unavailable. Stop other inference requests and try again. |
+| Timeout | Check worker/model loading logs and, if appropriate, increase startup/request timeout. |
+| Reference audio missing / invalid | Choose a discovered audio or enter its existing absolute path. No voice is bundled. |
+| No sound / autoplay blocked | Click the page/read button, unmute the browser, check system output. Stop then retry if Web Audio was blocked. |
+| Synthesis failure | The failed read stops. Fix the Runtime issue and click read again; no cloud fallback occurs. |
+| Remote browser cannot reach local Runtime | `localhost` means the machine running **dsh web**, not a remote browser's machine. |
+| LAN endpoint blocked | Only loopback is allowed initially. A private RFC1918 IPv4 address needs explicit LAN consent. Public addresses/hostnames remain blocked. |
+
+## Privacy and security
+
+Local mode sends assistant text only from the Harness Host to the configured Runtime. It never reads Harness login credentials. Loopback `127.0.0.1` and `localhost` are allowed by default; localhost DNS is pinned to IPv4 loopback. LAN consent displays a warning because text leaves the machine. There are no automatic cloud fallbacks; this fork's inherited cloud approval announcements are disabled in Local Runtime mode. The original plugin's own cloud features are independent: disable them yourself if all speech must remain local.
+
+Regular logs do not contain complete reply text. **Debug** explicitly enables sentence text logging; keep it off for private conversations. Local text/audio queues are in memory, bounded and released on playback acknowledgement, cancellation or expiry. The IndexTTS worker uses a temporary WAV during synthesis and deletes it after returning; abnormal termination may leave a temporary file. Your Runtime and Harness have their own logging, caching and download behavior.
+
+Edge TTS sends text to Microsoft. RVC can use Edge TTS for base speech before local conversion. These inherited providers have separate privacy characteristics; choosing them is not equivalent to fully local synthesis. Existing upstream RVC file/voice-pack tooling is unchanged and is intended for a trusted, locally operated Harness. Do not expose the Harness/plugin to untrusted users or the public internet.
+
+### Edge TTS cost and custom voices
+
+The inherited Edge TTS path does not ask for an Azure Speech subscription, Azure API key or payment account, so the plugin itself does not create an Azure charge. It calls Microsoft's online Edge Read Aloud service instead. Microsoft controls that service's availability, terms, rate limits and access policy; do not treat it as a guaranteed free or unlimited production API. Microsoft describes Read Aloud as an Edge browser feature in its [official documentation](https://support.microsoft.com/en-US/edge/use-immersive-reader-in-microsoft-edge), and use remains subject to the [Microsoft Services Agreement](https://www.microsoft.com/en/servicesagreement).
+
+Browser Read Aloud availability does not automatically grant commercial rights. Azure Speech standard voices are billed by characters. For a stable commercial service, review the current [Azure Speech pricing](https://azure.microsoft.com/pricing/details/cognitive-services/speech-services/) and applicable terms, or use a local Runtime. The plugin cannot determine licensing or regional terms for a user's content.
+
+Edge TTS cannot train a personal voice. Microsoft's Custom Neural Voice and Personal Voice are separate Azure Speech features with Limited Access registration. Microsoft requires explicit written permission and a recorded consent statement from the voice talent, and restricts approved use cases; custom voice training and hosting are billed separately. If an IndexTTS or GPT-SoVITS Runtime supports local voice cloning/training, its model, recording and consent terms still apply. This plugin only sends the Runtime's Voice ID and never stores or uploads reference audio.
+
+## Uninstall
+
+Stop playback, then run:
+
+```sh
+dsh plugin --profile web remove @dsh-external/dsh-plugin-local-ai-tts
+```
+
+Restart Harness and refresh the browser. This does not uninstall or alter the original plugin or any Runtime/model. To clear this plugin's main settings first, use **Reset to defaults**; original settings are untouched. Clearing all browser site data would also clear other plugins' data.
+
+## Development and release
+
+```sh
+npm run build
+npm test
+npm run test:adapter
+npm pack --dry-run
+```
+
+Mock tests use Node built-ins and Python stdlib: no npm install, GPU, model downloads or cloud TTS required. `src/local-client.js` and `src/coexistence-client.js` are embedded into `lib/client.js` for the Harness module loader; commit the fragments and generated bundle and run the build check. Existing upstream live tests are opt-in and excluded from CI.
+
+For an already running real service: `npm run smoke:runtime -- --engine indextts --endpoint http://127.0.0.1:8765 --voice default` (replace values). This checks health plus exactly three HTTP syntheses and writes no audio files. It is **not** a substitute for the real Harness/browser acceptance in [VALIDATION](docs/VALIDATION.md).
+
+Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), and [LICENSE](LICENSE) before tagging `v0.1.4`. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. No remote GitHub publication or tag is performed automatically.
 
 ## License
 
-MIT
+MIT, with the original copyright and license preserved. No new production dependencies. See [NOTICE](NOTICE.md) for upstream attribution and separate Runtime/model/voice licensing responsibilities.
+# Official WebUI backend
+
+The local process mode can load the official engine backend in the background without opening a browser. IndexTTS 2.5 uses the installed `webui.py`; GPT-SoVITS uses the official `GPT_SoVITS/inference_webui.py` or an explicitly selected fast variant. The plugin starts and connects to the process, while upstream code owns model loading and inference.
+
+If the detected port is already occupied, the plugin refuses to guess whether it is the same project or weights. Select Connection only after confirming the running service in Advanced settings. That mode never starts, switches weights, or stops a user-owned service. Discovery does not execute BAT files, install dependencies, or download models; the actual official startup may create caches, outputs, or missing resources according to upstream behavior.
+
+IndexTTS requires the 2.5 model directory and a confirmed reference audio. GPT-SoVITS also needs the reference transcript/languages and an explicit saved model choice when `weight.json` has multiple pairs. The connector reads the running Gradio `/config` and API metadata instead of hard-coding event numbers.
