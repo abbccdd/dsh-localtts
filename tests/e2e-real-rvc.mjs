@@ -24,12 +24,12 @@ const ctx = {
     }
     return undefined;
   },
-  effect() {}
+  effect(fn) { fn?.(); }
 };
 plugin.apply(ctx);
 
-const speakRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/speak');
-const audioRoute = routes.find((r) => r.kind === 'prefix' && r.path === '/dsh-tts-audio');
+const speakRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/speak');
+const audioRoute = routes.find((r) => r.kind === 'prefix' && r.path === '/dsh-local-ai-tts-audio');
 
 function mockReq(url, body) {
   const chunks = body === undefined ? [] : [body];
@@ -61,7 +61,7 @@ const t0 = Date.now();
 const res = mockRes();
 try {
   await speakRoute.handler(
-    mockReq('/dsh-tts-api/speak', JSON.stringify({ text: '这是通过插件链路转换出的 azusa 音色，用来验证端到端流程。', provider: 'rvc', custom })),
+    mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({ text: '这是通过插件链路转换出的 azusa 音色，用来验证端到端流程。', provider: 'rvc', custom })),
     res
   );
 } catch (e) {
@@ -82,7 +82,7 @@ console.log(`audio -> ${ares.head.c} ${bytes.length} bytes, head=${bytes.slice(0
 if (!(bytes.length > 1000 && bytes.slice(0, 4).toString() === 'RIFF')) process.exit(1);
 
 // ---- adaptive chunked progressive playback (long text) ----
-const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-next');
+const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-next');
 if (!nextRoute) {
   console.error('rvc-next route missing');
   process.exit(1);
@@ -91,7 +91,7 @@ const longText = '这是一段用来验证自适应分块渐进播放的长文�
 const t1 = Date.now();
 const longRes = mockRes();
 await speakRoute.handler(
-  mockReq('/dsh-tts-api/speak', JSON.stringify({ text: longText, provider: 'rvc', custom })),
+  mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({ text: longText, provider: 'rvc', custom })),
   longRes
 );
 const longParsed = JSON.parse(longRes.body);
@@ -102,7 +102,7 @@ let more = true;
 const chunkStarts = [];
 while (more) {
   const nr = mockRes();
-  await nextRoute.handler(mockReq(`/dsh-tts-api/rvc-next?job=${longParsed.jobId}`), nr);
+  await nextRoute.handler(mockReq(`/dsh-local-ai-tts-api/rvc-next?job=${longParsed.jobId}`), nr);
   const np = JSON.parse(nr.body);
   if (np && np.url) {
     fetched++;

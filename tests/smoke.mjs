@@ -92,15 +92,15 @@ function check(name, ok, detail) {
 
 const ctx = fakeCtx();
 plugin.apply(ctx);
-const speakRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/speak');
-const audioRoute = routes.find((r) => r.kind === 'prefix' && r.path === '/dsh-tts-audio');
+const speakRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/speak');
+const audioRoute = routes.find((r) => r.kind === 'prefix' && r.path === '/dsh-local-ai-tts-audio');
 
 check('plugin registers two routes', speakRoute !== undefined && audioRoute !== undefined);
 
 if (speakRoute && audioRoute) {
-  const res = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({ text: '你好，这是一个冒烟测试。', voice: 'zh-CN-XiaoxuanNeural' })), mockRes());
+  const res = await call(speakRoute, mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({ text: '你好，这是一个冒烟测试。', voice: 'zh-CN-XiaoxuanNeural' })), mockRes());
   const parsed = JSON.parse(res.body);
-  check('speak returns 200 + url', res.head.code === 200 && typeof parsed.url === 'string' && parsed.url.startsWith('/dsh-tts-audio/'), parsed.url ?? res.body);
+  check('speak returns 200 + url', res.head.code === 200 && typeof parsed.url === 'string' && parsed.url.startsWith('/dsh-local-ai-tts-audio/'), parsed.url ?? res.body);
 
   if (parsed.url) {
     const ares = await call(audioRoute, mockReq(parsed.url), mockRes());
@@ -112,7 +112,7 @@ if (speakRoute && audioRoute) {
   // repeated speak of the same text+voice must reuse the in-session audio cache
   // (replay does not re-synthesize)
   {
-    const res2 = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({ text: '你好，这是一个冒烟测试。', voice: 'zh-CN-XiaoxuanNeural' })), mockRes());
+    const res2 = await call(speakRoute, mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({ text: '你好，这是一个冒烟测试。', voice: 'zh-CN-XiaoxuanNeural' })), mockRes());
     const parsed2 = JSON.parse(res2.body);
     check('repeated speak reuses cached URL (no re-synthesize)', res2.head.code === 200 && parsed2.url === parsed.url, `first=${parsed.url} second=${parsed2.url}`);
   }
@@ -124,14 +124,14 @@ if (speakRoute && audioRoute) {
     check('audio download sets Content-Disposition attachment', dres.head.code === 200 && /attachment/.test(cd || ''), cd);
   }
 
-  const badRes = await call(audioRoute, mockReq('/dsh-tts-audio/nope'), mockRes());
+  const badRes = await call(audioRoute, mockReq('/dsh-local-ai-tts-audio/nope'), mockRes());
   check('unknown audio id -> 404', badRes.head.code === 404);
 
   // M2 subset: long plain-Edge reads also stream progressively (jobId+chunks),
   // not a single blocking synthesis
   {
     const longEdge = '这是一段很长的文本用于验证 Edge 长读也走自适应分块渐进播放，避免等待整段合成。'.repeat(10);
-    const er = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+    const er = await call(speakRoute, mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({
       text: longEdge, voice: 'zh-CN-XiaoxuanNeural', provider: 'edge-tts'
     })), mockRes());
     const ep = JSON.parse(er.body);
@@ -143,7 +143,7 @@ if (speakRoute && audioRoute) {
   // M1+ local-piper provider: registered in the abstraction; unconfigured -> graceful
   // localized error (not a crash)
   {
-    const pr = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+    const pr = await call(speakRoute, mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({
       text: 'hello', voice: '', provider: 'local-piper', custom: {}
     })), mockRes());
     const pp = JSON.parse(pr.body);
@@ -236,14 +236,14 @@ function startMockRvc() {
 if (speakRoute && audioRoute) {
   const mock = await startMockRvc();
   try {
-    const res = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+    const res = await call(speakRoute, mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({
       text: '这是一段 RVC 链路测试。',
       voice: 'zh-CN-XiaoxuanNeural',
       provider: 'rvc',
       custom: { baseUrl: `http://127.0.0.1:${mock.port}`, model: 'mock.pth', index: '' }
     })), mockRes());
     const parsed = JSON.parse(res.body);
-    check('rvc speak returns 200 + url', res.head.code === 200 && typeof parsed.url === 'string' && parsed.url.startsWith('/dsh-tts-audio/'), parsed.url ?? res.body);
+    check('rvc speak returns 200 + url', res.head.code === 200 && typeof parsed.url === 'string' && parsed.url.startsWith('/dsh-local-ai-tts-audio/'), parsed.url ?? res.body);
     if (parsed.url) {
       const ares = await call(audioRoute, mockReq(parsed.url), mockRes());
       const bytes = Buffer.isBuffer(ares.body) ? ares.body : Buffer.from(ares.body ?? '');
@@ -251,7 +251,7 @@ if (speakRoute && audioRoute) {
     }
 
     // upload-mode base audio (skip Edge synthesis)
-    const upRes = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+    const upRes = await call(speakRoute, mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({
       text: '上传底噪链路测试。',
       voice: 'zh-CN-XiaoxuanNeural',
       provider: 'rvc',
@@ -269,7 +269,7 @@ if (speakRoute && audioRoute) {
 
     // ---- adaptive chunked progressive playback (long RVC text) ----
     const longText = '这是一段用于验证自适应分块渐进播放的长文本朗读测试。'.repeat(12); // ~264 chars -> several chunks
-    const longRes = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+    const longRes = await call(speakRoute, mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({
       text: longText,
       voice: 'zh-CN-XiaoxuanNeural',
       provider: 'rvc',
@@ -282,20 +282,20 @@ if (speakRoute && audioRoute) {
       && typeof longParsed.total === 'number' && longParsed.total > longParsed.chunks.length,
       `jobId=${longParsed.jobId} chunks=${longParsed.chunks && longParsed.chunks.length} total=${longParsed.total}`);
     if (typeof longParsed.jobId === 'string') {
-      const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-next');
+      const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-next');
       check('plugin registers rvc-next route', nextRoute !== undefined);
       let fetched = longParsed.chunks.length;
       let more = true;
       let drained = 0;
       while (more && drained < 100) {
-        const nr = await call(nextRoute, mockReq(`/dsh-tts-api/rvc-next?job=${longParsed.jobId}`), mockRes());
+        const nr = await call(nextRoute, mockReq(`/dsh-local-ai-tts-api/rvc-next?job=${longParsed.jobId}`), mockRes());
         const np = JSON.parse(nr.body);
         if (np && np.url) fetched++;
         more = !!(np && np.more);
         drained++;
       }
       check('rvc-next drains to total chunks', fetched === longParsed.total && more === false, `fetched=${fetched} total=${longParsed.total}`);
-      check('rvc-next done for unknown job', (await call(nextRoute, mockReq('/dsh-tts-api/rvc-next?job=unknown'), mockRes())).body === JSON.stringify({ done: true, gone: true }));
+      check('rvc-next done for unknown job', (await call(nextRoute, mockReq('/dsh-local-ai-tts-api/rvc-next?job=unknown'), mockRes())).body === JSON.stringify({ done: true, gone: true }));
       // a prewarmed chunk url must serve wav through the audio route
       const cRes = await call(audioRoute, mockReq(longParsed.chunks[0]), mockRes());
       const cBytes = Buffer.isBuffer(cRes.body) ? cRes.body : Buffer.from(cRes.body ?? '');
@@ -304,7 +304,7 @@ if (speakRoute && audioRoute) {
 
     // ---- explicit cancel: abandoning a chunked job releases it immediately ----
     {
-      const spRes = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      const spRes = await call(speakRoute, mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({
         text: longText,
         voice: 'zh-CN-XiaoxuanNeural',
         provider: 'rvc',
@@ -312,11 +312,11 @@ if (speakRoute && audioRoute) {
       })), mockRes());
       const sp = JSON.parse(spRes.body);
       if (typeof sp.jobId === 'string') {
-        const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-next');
-        const c1 = await call(nextRoute, mockReq(`/dsh-tts-api/rvc-next?job=${sp.jobId}&cancel=1`), mockRes());
+        const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-next');
+        const c1 = await call(nextRoute, mockReq(`/dsh-local-ai-tts-api/rvc-next?job=${sp.jobId}&cancel=1`), mockRes());
         const c1p = JSON.parse(c1.body);
         check('rvc-next cancel returns {done,cancelled}', c1.head.code === 200 && c1p.done === true && c1p.cancelled === true, c1.body);
-        const c2 = await call(nextRoute, mockReq(`/dsh-tts-api/rvc-next?job=${sp.jobId}`), mockRes());
+        const c2 = await call(nextRoute, mockReq(`/dsh-local-ai-tts-api/rvc-next?job=${sp.jobId}`), mockRes());
         const c2p = JSON.parse(c2.body);
         check('cancelled job no longer servable (gone)', c2.head.code === 200 && c2p.done === true && c2p.gone === true, c2.body);
       } else {
@@ -325,16 +325,16 @@ if (speakRoute && audioRoute) {
     }
 
     // file-discovery proxy route
-    const filesRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-files');
-    const fr = await call(filesRoute, mockReq(`/dsh-tts-api/rvc-files?baseUrl=http://127.0.0.1:${mock.port}&kind=pth`), mockRes());
+    const filesRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-files');
+    const fr = await call(filesRoute, mockReq(`/dsh-local-ai-tts-api/rvc-files?baseUrl=http://127.0.0.1:${mock.port}&kind=pth`), mockRes());
     const filesData = JSON.parse(fr.body);
     check('rvc-files proxy lists pth files', fr.head.code === 200 && Array.isArray(filesData.files) && filesData.files.length > 0 && filesData.files[0].name === 'demo.pth', fr.body);
-    const fi = await call(filesRoute, mockReq(`/dsh-tts-api/rvc-files?baseUrl=http://127.0.0.1:${mock.port}&kind=index`), mockRes());
+    const fi = await call(filesRoute, mockReq(`/dsh-local-ai-tts-api/rvc-files?baseUrl=http://127.0.0.1:${mock.port}&kind=index`), mockRes());
     const filesIdx = JSON.parse(fi.body);
     check('rvc-files proxy lists index files', fi.head.code === 200 && Array.isArray(filesIdx.files) && filesIdx.files.length > 0 && filesIdx.files[0].name === 'demo.index', fi.body);
 
     // unreachable RVC service -> actionable, platform-aware startup hint
-    const badFiles = await call(filesRoute, mockReq('/dsh-tts-api/rvc-files?baseUrl=http%3A%2F%2F127.0.0.1%3A1&kind=pth'), mockRes());
+    const badFiles = await call(filesRoute, mockReq('/dsh-local-ai-tts-api/rvc-files?baseUrl=http%3A%2F%2F127.0.0.1%3A1&kind=pth'), mockRes());
     const badFilesData = JSON.parse(badFiles.body);
     check('rvc-files unreachable returns actionable startup hint',
       badFiles.head.code === 502 &&
@@ -343,8 +343,8 @@ if (speakRoute && audioRoute) {
       badFiles.body);
 
     // compact-index proxy route
-    const compactRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-compact-index');
-    const cr = await call(compactRoute, mockReq('/dsh-tts-api/rvc-compact-index', JSON.stringify({
+    const compactRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-compact-index');
+    const cr = await call(compactRoute, mockReq('/dsh-local-ai-tts-api/rvc-compact-index', JSON.stringify({
       baseUrl: `http://127.0.0.1:${mock.port}`,
       index: 'C:/models/demo.index',
       target_vectors: 2000
@@ -355,16 +355,16 @@ if (speakRoute && audioRoute) {
       && compactData.path === 'C:/models/demo_compact_2000.index'
       && compactData.reduction_pct === 98.5,
       cr.body);
-    const cb = await call(compactRoute, mockReq('/dsh-tts-api/rvc-compact-index', JSON.stringify({
+    const cb = await call(compactRoute, mockReq('/dsh-local-ai-tts-api/rvc-compact-index', JSON.stringify({
       baseUrl: `http://127.0.0.1:${mock.port}`,
       index: ''
     })), mockRes());
     check('compact-index proxy passes server error', cb.head.code === 502 && typeof JSON.parse(cb.body).error === 'string', cb.body);
 
     // ---- one-click diagnostics ----
-    const diagnoseRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/diagnose');
+    const diagnoseRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/diagnose');
     check('plugin registers diagnose route', diagnoseRoute !== undefined);
-    const dg = await call(diagnoseRoute, mockReq('/dsh-tts-api/diagnose', JSON.stringify({
+    const dg = await call(diagnoseRoute, mockReq('/dsh-local-ai-tts-api/diagnose', JSON.stringify({
       rvcBaseUrl: `http://127.0.0.1:${mock.port}`
     })), mockRes());
     const dgData = JSON.parse(dg.body);
@@ -373,7 +373,7 @@ if (speakRoute && audioRoute) {
     const model = dgData.checks.find(c => c.id === 'rvc-model');
     check('diagnose: edge synthesis ok', dg.head.code === 200 && edge && edge.ok === true, JSON.stringify(edge));
     check('diagnose: rvc server + model ok (mock)', rvc && rvc.ok === true && model && model.ok === true, JSON.stringify({ rvc, model }));
-    const dgBad = await call(diagnoseRoute, mockReq('/dsh-tts-api/diagnose', JSON.stringify({
+    const dgBad = await call(diagnoseRoute, mockReq('/dsh-local-ai-tts-api/diagnose', JSON.stringify({
       rvcBaseUrl: 'http://127.0.0.1:1'
     })), mockRes());
     const dgBadData = JSON.parse(dgBad.body);
@@ -388,9 +388,9 @@ if (speakRoute && audioRoute) {
 
 {
   // isolated packs dir for the test
-  process.env.DSH_TTS_PACKS_DIR = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-packs-'));
+  process.env.DSH_LOCAL_AI_TTS_PACKS_DIR = mkdtempSync(path.join(os.tmpdir(), 'dsh-local-ai-tts-packs-'));
   // build a mock registry dir
-  const regDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-reg-'));
+  const regDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-local-ai-tts-reg-'));
   const modelBytes = Buffer.from('FAKE-MODEL-BYTES-0123456789'.repeat(8000)); // ~200KB
   const indexBytes = Buffer.from('FAKE-INDEX-BYTES-abcdef'.repeat(6000));      // ~108KB
   const sha = b => createHash('sha256').update(b).digest('hex');
@@ -430,16 +430,16 @@ if (speakRoute && audioRoute) {
     }
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
-    const packsRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-packs');
-    const installRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-pack-install');
-    const installedRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-packs-installed');
+    const packsRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-packs');
+    const installRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-pack-install');
+    const installedRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-packs-installed');
     check('plugin registers pack routes', packsRoute !== undefined && installRoute !== undefined && installedRoute !== undefined);
 
-    const pr = await call(packsRoute, mockReq(`/dsh-tts-api/rvc-packs?registry=${encodeURIComponent(base)}`), mockRes());
+    const pr = await call(packsRoute, mockReq(`/dsh-local-ai-tts-api/rvc-packs?registry=${encodeURIComponent(base)}`), mockRes());
     const prData = JSON.parse(pr.body);
     check('rvc-packs proxies manifest', pr.head.code === 200 && Array.isArray(prData.packs) && prData.packs.length === 2, pr.body);
 
-    const ir = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-a' })), mockRes());
+    const ir = await call(installRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-a' })), mockRes());
     const irData = JSON.parse(ir.body);
     const installedModel = irData.modelPath || '';
     const installedIndex = irData.indexPath || '';
@@ -448,14 +448,14 @@ if (speakRoute && audioRoute) {
     check('rvc-pack-install downloads + sha256 verifies + writes', ir.head.code === 200 && irData.ok && modelOk && indexOk,
       `model=${installedModel} index=${installedIndex}`);
 
-    const ir2 = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-a' })), mockRes());
+    const ir2 = await call(installRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-a' })), mockRes());
     check('re-install skips (already installed)', JSON.parse(ir2.body).skipped === true, ir2.body);
 
-    const irB = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-b' })), mockRes());
+    const irB = await call(installRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-b' })), mockRes());
     const irBData = JSON.parse(irB.body);
     check('index-free pack installs without index', irB.head.code === 200 && irBData.ok && irBData.indexPath === '', irB.body);
 
-    const st = await call(installedRoute, mockReq('/dsh-tts-api/rvc-packs-installed'), mockRes());
+    const st = await call(installedRoute, mockReq('/dsh-local-ai-tts-api/rvc-packs-installed'), mockRes());
     const stData = JSON.parse(st.body);
     check('rvc-packs-installed lists 2 packs', st.head.code === 200 && stData.installed && stData.installed['pack-a'] && stData.installed['pack-b'], st.body);
 
@@ -479,19 +479,19 @@ if (speakRoute && audioRoute) {
     writeFileSync(path.join(regDir, 'packs-shared', 'i2k.index'), Buffer.from('IDX2K'));
     writeFileSync(path.join(regDir, 'packs-shared', 'i10k.index'), Buffer.from('IDX10K'));
 
-    const ic1 = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-c' })), mockRes());
+    const ic1 = await call(installRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-c' })), mockRes());
     const ic1d = JSON.parse(ic1.body);
     const ic1Ok = ic1.head.code === 200 && ic1d.ok && ic1d.indexId === 'tiny'
       && readFileSync(ic1d.indexPath, 'utf8') === 'IDX2K' && ic1d.variants.length === 2;
     check('multi-index install defaults to first variant (relative urls)', ic1Ok, ic1.body);
 
-    const ic2 = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-c', indexId: 'mid' })), mockRes());
+    const ic2 = await call(installRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-c', indexId: 'mid' })), mockRes());
     const ic2d = JSON.parse(ic2.body);
     const ic2Ok = ic2.head.code === 200 && ic2d.ok && ic2d.indexId === 'mid'
       && readFileSync(ic2d.indexPath, 'utf8') === 'IDX10K';
     check('switching index variant re-downloads the chosen index', ic2Ok, ic2.body);
 
-    const st2 = await call(installedRoute, mockReq('/dsh-tts-api/rvc-packs-installed'), mockRes());
+    const st2 = await call(installedRoute, mockReq('/dsh-local-ai-tts-api/rvc-packs-installed'), mockRes());
     const st2Data = JSON.parse(st2.body);
     check('installed.json records chosen index sha256', st2Data.installed['pack-c'].indexId === 'mid'
       && st2Data.installed['pack-c'].indexSha256 === sha(Buffer.from('IDX10K')), st2.body);
@@ -501,10 +501,10 @@ if (speakRoute && audioRoute) {
       schema: 1,
       packs: [{ id: 'pack-bad', name: 'Bad', version: '1.0.0', model: { url: `${base}/model.pth`, size: modelBytes.length, sha256: '0'.repeat(64) } }]
     }, null, 2));
-    const bad = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-bad' })), mockRes());
+    const bad = await call(installRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-bad' })), mockRes());
     const badData = JSON.parse(bad.body);
     check('tampered sha256 rejected', bad.head.code === 502 && /sha256/.test(badData.error || ''), bad.body);
-    check('failed install leaves no model file', !existsSync(path.join(process.env.DSH_TTS_PACKS_DIR, 'pack_bad', 'pack_bad.pth')));
+    check('failed install leaves no model file', !existsSync(path.join(process.env.DSH_LOCAL_AI_TTS_PACKS_DIR, 'pack_bad', 'pack_bad.pth')));
 
     // installed files are named <packId>.pth / <packId>.index so the browse
     // picker can tell voices apart
@@ -513,20 +513,20 @@ if (speakRoute && audioRoute) {
       `${irData.modelPath} / ${irData.indexPath}`);
 
     // stale entry (files deleted) is reconciled away on read
-    const staleDir = path.join(process.env.DSH_TTS_PACKS_DIR, 'pack-a');
+    const staleDir = path.join(process.env.DSH_LOCAL_AI_TTS_PACKS_DIR, 'pack-a');
     rmSync(staleDir, { recursive: true, force: true });
-    const st3 = await call(installedRoute, mockReq('/dsh-tts-api/rvc-packs-installed'), mockRes());
+    const st3 = await call(installedRoute, mockReq('/dsh-local-ai-tts-api/rvc-packs-installed'), mockRes());
     const st3Data = JSON.parse(st3.body);
     check('deleted pack no longer listed as installed', !st3Data.installed['pack-a'], st3.body);
 
     // uninstall route removes files + record
-    const ui = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-b' })), mockRes());
+    const ui = await call(installRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-b' })), mockRes());
     const uiData = JSON.parse(ui.body);
-    const uninstallRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-pack-uninstall');
-    const un = await call(uninstallRoute, mockReq('/dsh-tts-api/rvc-pack-uninstall', JSON.stringify({ packId: 'pack-b' })), mockRes());
+    const uninstallRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-pack-uninstall');
+    const un = await call(uninstallRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-uninstall', JSON.stringify({ packId: 'pack-b' })), mockRes());
     check('rvc-pack-uninstall removes files + record', un.head.code === 200
       && !existsSync(uiData.modelPath)
-      && !JSON.parse((await call(installedRoute, mockReq('/dsh-tts-api/rvc-packs-installed'), mockRes())).body).installed['pack-b'],
+      && !JSON.parse((await call(installedRoute, mockReq('/dsh-local-ai-tts-api/rvc-packs-installed'), mockRes())).body).installed['pack-b'],
       un.body);
   } finally {
     reg.server.close();
@@ -535,8 +535,8 @@ if (speakRoute && audioRoute) {
 
 // --- pack-install progress reporting (delayed registry) ---
 {
-  process.env.DSH_TTS_PACKS_DIR = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-packs-prog-'));
-  const regDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-reg-prog-'));
+  process.env.DSH_LOCAL_AI_TTS_PACKS_DIR = mkdtempSync(path.join(os.tmpdir(), 'dsh-local-ai-tts-packs-prog-'));
+  const regDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-local-ai-tts-reg-prog-'));
   const modelBytes = Buffer.from('PROGRESS-MODEL-0123456789'.repeat(5000));
   const sha = b => createHash('sha256').update(b).digest('hex');
   writeFileSync(path.join(regDir, 'model.pth'), modelBytes);
@@ -547,18 +547,18 @@ if (speakRoute && audioRoute) {
   }));
   const reg = await startMockRegistry(regDir, 0, 400); // 400ms delay per file
   try {
-    const installRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-pack-install');
-    const progressRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-pack-progress');
+    const installRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-pack-install');
+    const progressRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-pack-progress');
     check('plugin registers pack-progress route', progressRoute !== undefined);
     const pKey = 'prog-' + Date.now();
-    const installPromise = call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({
+    const installPromise = call(installRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-install', JSON.stringify({
       registry: reg.base, packId: 'pack-d', progressKey: pKey
     })), mockRes());
     let sawProgress = false;
     for (let i = 0; i < 8; i++) {
       await new Promise(r => setTimeout(r, 120));
       const pr = mockRes();
-      await call(progressRoute, mockReq(`/dsh-tts-api/rvc-pack-progress?key=${pKey}`), pr);
+      await call(progressRoute, mockReq(`/dsh-local-ai-tts-api/rvc-pack-progress?key=${pKey}`), pr);
       const d = JSON.parse(pr.body);
       if (d && d.waiting !== true && typeof d.phase === 'string') { sawProgress = true; break; }
     }
@@ -566,10 +566,10 @@ if (speakRoute && audioRoute) {
     const res = await installPromise;
     check('delayed install completes', JSON.parse(res.body).ok === true, res.body);
     const pr2 = mockRes();
-    await call(progressRoute, mockReq(`/dsh-tts-api/rvc-pack-progress?key=${pKey}`), pr2);
+    await call(progressRoute, mockReq(`/dsh-local-ai-tts-api/rvc-pack-progress?key=${pKey}`), pr2);
     check('pack-progress finished after install', JSON.parse(pr2.body).finished === true, pr2.body);
     const pr3 = mockRes();
-    await call(progressRoute, mockReq('/dsh-tts-api/rvc-pack-progress?key=unknown-key-xyz'), pr3);
+    await call(progressRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-progress?key=unknown-key-xyz'), pr3);
     check('pack-progress unknown key -> waiting (not done)', JSON.parse(pr3.body).waiting === true, pr3.body);
   } finally {
     reg.server.close();
@@ -578,8 +578,8 @@ if (speakRoute && audioRoute) {
 
 // --- pack download through an HTTP CONNECT proxy (mimics Clash) ---
 {
-  process.env.DSH_TTS_PACKS_DIR = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-packs-proxy-'));
-  const regDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-reg-proxy-'));
+  process.env.DSH_LOCAL_AI_TTS_PACKS_DIR = mkdtempSync(path.join(os.tmpdir(), 'dsh-local-ai-tts-packs-proxy-'));
+  const regDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-local-ai-tts-reg-proxy-'));
   const modelBytes = Buffer.from('PROXY-DOWNLOAD-abcdef'.repeat(8000));
   const sha = b => createHash('sha256').update(b).digest('hex');
   writeFileSync(path.join(regDir, 'model.pth'), modelBytes);
@@ -607,12 +607,12 @@ if (speakRoute && audioRoute) {
   await new Promise(r => proxy.listen(0, '127.0.0.1', r));
   const proxyPort = proxy.address().port;
   try {
-    const packsRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-packs');
-    const installRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-pack-install');
-    const pr = await call(packsRoute, mockReq(`/dsh-tts-api/rvc-packs?registry=${encodeURIComponent(reg.base)}&proxy=${encodeURIComponent(`http://127.0.0.1:${proxyPort}`)}`), mockRes());
+    const packsRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-packs');
+    const installRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/rvc-pack-install');
+    const pr = await call(packsRoute, mockReq(`/dsh-local-ai-tts-api/rvc-packs?registry=${encodeURIComponent(reg.base)}&proxy=${encodeURIComponent(`http://127.0.0.1:${proxyPort}`)}`), mockRes());
     const prData = JSON.parse(pr.body);
     check('manifest fetch through proxy', pr.head.code === 200 && prData.packs[0].id === 'pack-p', pr.body);
-    const ir = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({
+    const ir = await call(installRoute, mockReq('/dsh-local-ai-tts-api/rvc-pack-install', JSON.stringify({
       registry: reg.base, packId: 'pack-p', proxy: `http://127.0.0.1:${proxyPort}`
     })), mockRes());
     const irData = JSON.parse(ir.body);
@@ -627,8 +627,8 @@ if (speakRoute && audioRoute) {
 // --- tools/make-pack.mjs: one-command pack generation + validation ---
 {
   const makePack = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'tools', 'make-pack.mjs');
-  const repo = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-packrepo-'));
-  const incoming = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-incoming-'));
+  const repo = mkdtempSync(path.join(os.tmpdir(), 'dsh-local-ai-tts-packrepo-'));
+  const incoming = mkdtempSync(path.join(os.tmpdir(), 'dsh-local-ai-tts-incoming-'));
   writeFileSync(path.join(incoming, 'model.pth'), Buffer.from('GEN-MODEL-12345'));
   writeFileSync(path.join(incoming, 'idx2k.index'), Buffer.from('GEN-INDEX-2K'));
   writeFileSync(path.join(incoming, 'idx10k.index'), Buffer.from('GEN-INDEX-10K'));
@@ -685,7 +685,7 @@ if (speakRoute && audioRoute) {
 // The client turns this i18n-tagged error into a toast (+ one-click Edge
 // fallback); verify the host response shape.
 {
-  const badSpeak = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+  const badSpeak = await call(speakRoute, mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({
     text: '你好。',
     voice: 'zh-CN-XiaoxuanNeural',
     provider: 'rvc',
@@ -701,7 +701,7 @@ if (speakRoute && audioRoute) {
 
 // --- approval voice alerts (session/event firehose -> /notify queue) ---
 {
-  const notifyRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/notify');
+  const notifyRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/notify');
   check('plugin registers notify route', notifyRoute !== undefined);
   if (notifyRoute) {
     // simulate the host session/event firehose with the REAL SessionEvent
@@ -712,7 +712,7 @@ if (speakRoute && audioRoute) {
     emitFake('session/event', { id: 's3' }, { type: 'approval/decided', seq: 3, time: 3, data: { id: 'ap-1', outcome: 'allowed-once' } }); // same id, different type -> announced
     emitFake('session/event', { id: 's4' }, { type: 'msg/markdown', seq: 4, time: 4, data: { text: '非审批事件，应被忽略' } });
 
-    const n0 = await call(notifyRoute, mockReq('/dsh-tts-api/notify?s=0'), mockRes());
+    const n0 = await call(notifyRoute, mockReq('/dsh-local-ai-tts-api/notify?s=0'), mockRes());
     const n0d = JSON.parse(n0.body);
     check('notify queues approval pair (dedup by type:id, not id)',
       n0.head.code === 200 && n0d.items.length === 2 && n0d.latest === 2, n0.body);
@@ -723,9 +723,9 @@ if (speakRoute && audioRoute) {
     check('notify approval-decided maps allowed-once -> granted',
       second && second.kind === 'approval-decided' && second.outcome === 'granted', JSON.stringify(second));
 
-    const n2 = await call(notifyRoute, mockReq('/dsh-tts-api/notify?s=2'), mockRes());
+    const n2 = await call(notifyRoute, mockReq('/dsh-local-ai-tts-api/notify?s=2'), mockRes());
     check('notify incremental cursor returns nothing new', JSON.parse(n2.body).items.length === 0, n2.body);
-    const n1 = await call(notifyRoute, mockReq('/dsh-tts-api/notify?s=1'), mockRes());
+    const n1 = await call(notifyRoute, mockReq('/dsh-local-ai-tts-api/notify?s=1'), mockRes());
     const n1d = JSON.parse(n1.body);
     check('notify since=1 returns only later item', n1d.items.length === 1 && n1d.items[0].kind === 'approval-decided', n1.body);
 

@@ -88,24 +88,24 @@ try {
   };
   // evaluate client.js in this context
   const fn = new Function('window', 'navigator', 'document', 'Audio', clientSrc + '\n;return window.__ModuleLoader__;');
-  globalThis.__dshTtsClientSrc = clientSrc;
+  globalThis.__dshLocalAiTtsClientSrc = clientSrc;
   const ml = fn(globalThis.window, globalThis.navigator, globalThis.document, globalThis.Audio);
   check('client.js loads + apply() runs', injectedComponents.length > 0, `${injectedComponents.length} slot(s) injected`);
   // ---- i18n preference persistence (round-trip) ----
   try {
-    const hooks = globalThis.window.__dshTtsI18n;
+    const hooks = globalThis.window.__dshLocalAiTtsI18n;
     check('i18n hook exposed for tests', !!hooks && typeof hooks.setLang === 'function');
     // switch to English -> must persist
     hooks.setLang('en');
-    check('setLang("en") persists to localStorage', memStore.get('dsh-tts-lang') === 'en',
-      'stored=' + memStore.get('dsh-tts-lang'));
+    check('setLang("en") persists to localStorage', memStore.get('dsh-local-ai-tts-lang') === 'en',
+      'stored=' + memStore.get('dsh-local-ai-tts-lang'));
     check('active locale resolves to en', hooks.current() === 'en', 'current()=' + hooks.current());
     // simulate reload by re-invoking the loader factory in a fresh module eval that
     // calls loadPersistedLang() from the same localStorage
-    const src2 = globalThis.__dshTtsClientSrc;
+    const src2 = globalThis.__dshLocalAiTtsClientSrc;
     const fn2 = new Function('window', 'navigator', 'document', 'Audio', src2 + '\n;return window.__ModuleLoader__;');
     const ml2 = fn2(globalThis.window, globalThis.navigator, globalThis.document, globalThis.Audio);
-    const I18N2 = globalThis.window.__dshTtsI18n;
+    const I18N2 = globalThis.window.__dshLocalAiTtsI18n;
     check('persisted language survives reload (lang=en)', I18N2.lang === 'en', 'lang=' + I18N2.lang);
     check('persisted language resolves to en after reload', I18N2.current() === 'en');
     // reset to auto for isolation
@@ -116,19 +116,19 @@ try {
 
   // ---- settings persistence round-trip (voice/auto-read/provider/rvc) ----
   try {
-    const S1 = globalThis.window.__dshTtsSettings;
+    const S1 = globalThis.window.__dshLocalAiTtsSettings;
     check('settings hook exposed for tests', !!S1 && typeof S1.get === 'function' && typeof S1.reset === 'function');
     // seed a "user-changed" snapshot into localStorage, then simulate a reload by
     // re-running the factory so loadSettings() applies it
-    memStore.set('dsh-tts-settings', JSON.stringify({
+    memStore.set('dsh-local-ai-tts-settings', JSON.stringify({
       autoRead: true, voice: 'zh-CN-YunyangNeural', provider: 'rvc', rvcAutoFallback: true,
       notify: { enabled: true, approval: false, approvalResult: true, voice: 'zh-CN-YunxiNeural' },
       rvc: { baseUrl: 'http://127.0.0.1:9999', model: '/x.pth', indexRate: 0.5 },
     }));
-    const srcS = globalThis.__dshTtsClientSrc;
+    const srcS = globalThis.__dshLocalAiTtsClientSrc;
     const fnS = new Function('window', 'navigator', 'document', 'Audio', srcS + '\n;return window.__ModuleLoader__;');
     const mlS = fnS(globalThis.window, globalThis.navigator, globalThis.document, globalThis.Audio);
-    const S2 = globalThis.window.__dshTtsSettings;
+    const S2 = globalThis.window.__dshLocalAiTtsSettings;
     const s2 = S2.get();
     check('settings loaded from localStorage', s2.autoRead === true && s2.voice === 'zh-CN-YunyangNeural' && s2.provider === 'rvc', JSON.stringify(s2));
     check('rvcAutoFallback loaded from localStorage', s2.rvcAutoFallback === true, 'rvcAutoFallback=' + s2.rvcAutoFallback);
@@ -139,14 +139,14 @@ try {
     const r = S2.get();
     check('reset restores defaults', r.autoRead === false && r.voice === 'zh-CN-XiaoxuanNeural' && r.provider === 'edge-tts' && r.rvcAutoFallback === false, JSON.stringify(r));
     check('reset restores notify defaults', r.notify.enabled === false && r.notify.approval === true && r.notify.approvalResult === false && r.notify.voice === 'zh-CN-XiaoxuanNeural', JSON.stringify(r.notify));
-    check('reset clears stored settings', !memStore.has('dsh-tts-settings'));
+    check('reset clears stored settings', !memStore.has('dsh-local-ai-tts-settings'));
     // corrupt stored JSON must not crash; falls back to defaults
-    memStore.set('dsh-tts-settings', '{not json');
+    memStore.set('dsh-local-ai-tts-settings', '{not json');
     const fnC = new Function('window', 'navigator', 'document', 'Audio', srcS + '\n;return window.__ModuleLoader__;');
     fnC(globalThis.window, globalThis.navigator, globalThis.document, globalThis.Audio);
-    const S3 = globalThis.window.__dshTtsSettings;
+    const S3 = globalThis.window.__dshLocalAiTtsSettings;
     check('corrupt stored settings ignored (defaults)', S3.get().voice === 'zh-CN-XiaoxuanNeural');
-    memStore.delete('dsh-tts-settings');
+    memStore.delete('dsh-local-ai-tts-settings');
   } catch (e) {
     check('settings persistence round-trip', false, String(e && e.stack || e));
   }
@@ -202,7 +202,7 @@ if (!failed) {
         if (Array.isArray(ch)) { for (const c of ch) { if (hasClass(c, cls)) return true; } }
         return false;
       };
-      check('auto-read rendered as labeled pill', hasClass(node, 'dsh-tts-auto-pill') && hasClass(node, 'dsh-tts-auto-label'), undefined);
+      check('auto-read rendered as labeled pill', hasClass(node, 'dsh-local-ai-tts-auto-pill') && hasClass(node, 'dsh-local-ai-tts-auto-label'), undefined);
     } catch (e) {
       check('auto-read rendered as labeled pill', false, String(e && e.stack || e).slice(0, 200));
     }
@@ -213,7 +213,7 @@ if (!failed) {
 // message; dismissToast() must remove it. (This is the error-surfacing channel
 // added for message read-aloud / auto-read failures + RVC fallback notices.)
 {
-  const toastApi = globalThis.window.__dshTtsToast;
+  const toastApi = globalThis.window.__dshLocalAiTtsToast;
   if (toastApi && typeof toastApi.show === 'function') {
     const hasClass = (n, cls) => {
       if (!n) return false;
@@ -239,7 +239,7 @@ if (!failed) {
       react.useState = h.useState; react.useEffect = h.useEffect; react.useRef = h.useRef; react.useMemo = h.useMemo;
       const rendered = overlayComps.map(({ fn }) => fn()({}));
       react.useState = orig.useState; react.useEffect = orig.useEffect; react.useRef = orig.useRef; react.useMemo = orig.useMemo;
-      const toastNodes = rendered.filter(n => hasClass(n, 'dsh-tts-toast'));
+      const toastNodes = rendered.filter(n => hasClass(n, 'dsh-local-ai-tts-toast'));
       const withText = toastNodes.filter(n => allText(n).includes('语音合成失败：boom'));
       check('toast renders in shell.overlay with message', toastNodes.length >= 1 && withText.length >= 1,
         `toastNodes=${toastNodes.length} textFound=${withText.length}`);
@@ -250,12 +250,12 @@ if (!failed) {
       react.useState = h2.useState; react.useEffect = h2.useEffect; react.useRef = h2.useRef; react.useMemo = h2.useMemo;
       const rendered2 = overlayComps.map(({ fn }) => fn()({}));
       react.useState = orig2.useState; react.useEffect = orig2.useEffect; react.useRef = orig2.useRef; react.useMemo = orig2.useMemo;
-      check('toast dismissed removes toast node', rendered2.filter(n => hasClass(n, 'dsh-tts-toast')).length === 0);
+      check('toast dismissed removes toast node', rendered2.filter(n => hasClass(n, 'dsh-local-ai-tts-toast')).length === 0);
     } catch (e) {
       check('toast renders + dismisses', false, String(e && e.stack || e).slice(0, 200));
     }
   } else {
-    check('toast hook exposed (__dshTtsToast)', false, 'hook missing');
+    check('toast hook exposed (__dshLocalAiTtsToast)', false, 'hook missing');
   }
 }
 
@@ -282,6 +282,32 @@ if (!failed) {
     }
   }
 }
+
+try {
+  const local = { mode: 'process', launchPreset: 'builtin', engine: 'gpt-sovits', pythonPath: process.execPath, projectPath: 'C:/tts', modelDir: '', presetsRoot: '', device: '', apiScript: 'C:/tts/api_v2.py', ttsConfig: '', referenceAudio: 'C:/tts/ref.wav', promptText: '', promptLang: 'zh', textLang: 'zh', durationFactor: 1, speedFactor: 1, port: 9880, command: '', args: [], cwd: '', voice: 'other', startupTimeoutMs: 30000, timeoutMs: 30000, autoStart: true, debug: false };
+  memStore.set('dsh-local-ai-tts-settings', JSON.stringify({ provider: 'gpt-sovits-process', autoRead: true, localProcess: local }));
+  new Function('window', 'navigator', 'document', 'Audio', clientSrc)(window, navigator, document, Audio);
+  const saved = window.__dshLocalAiTtsSettings;
+  check('Local process settings restored', saved.get().provider === 'gpt-sovits-process' && JSON.stringify(saved.get().localProcess) === JSON.stringify(local));
+  saved.save();
+  check('Local process settings persist all launch fields', JSON.stringify(JSON.parse(memStore.get('dsh-local-ai-tts-settings')).localProcess) === JSON.stringify(local));
+  const comp = injectedComponents.filter(c => c.slot === 'settings.plugins.tab').at(-1);
+  const hook = makeHookCtx();
+  Object.assign(react, { useState: hook.useState, useEffect: hook.useEffect, useRef: hook.useRef, useMemo: hook.useMemo });
+  const panel = comp.fn()({});
+  const flatten = n => !n ? [] : [n, ...(n.children || []).flatMap(flatten)];
+  const providerSelect = flatten(panel).find(n => n.type === 'select' && n.props.value === 'gpt-sovits-process');
+  check('parent Provider reflects the restored GPT-SoVITS selection', !!providerSelect);
+  const localPanel = flatten(panel).find(n => typeof n.type === 'function' && n.type.name === 'Settings');
+  check('Local Runtime settings panel is mounted', !!localPanel);
+  const localNodes = flatten(localPanel.type({}));
+  check('connection test, engine, project and reference controls render', localNodes.some(n => n.children?.includes('Test Connection') || n.children?.includes('测试连接')) && localNodes.some(n => n.type === 'select' && n.props.value === 'gpt-sovits') && localNodes.some(n => n.type === 'input' && n.props.value === local.projectPath) && localNodes.some(n => n.type === 'input' && n.props.value === local.referenceAudio));
+  check('advanced paths are collapsed by default', localNodes.some(n => n.type === 'details' && !n.props.open));
+  providerSelect.props.onChange({ target: { value: 'indextts-process' } });
+  check('parent engine switch persists matching provider and clears stale project', saved.get().provider === 'indextts-process' && saved.get().localProcess.engine === 'indextts' && saved.get().localProcess.projectPath === '');
+  saved.reset();
+  check('Local process reset removes command and personal voice', saved.get().localProcess.command === '' && saved.get().localProcess.voice === 'default');
+} catch (e) { check('Local Runtime persistence/UI', false, String(e.stack)); }
 
 const failedCount = results.filter(r => !r.ok).length;
 console.log(`\n${results.length - failedCount}/${results.length} client-load checks passed`);

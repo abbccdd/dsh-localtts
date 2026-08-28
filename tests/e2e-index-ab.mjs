@@ -26,11 +26,11 @@ const ctx = {
     }
     return undefined;
   },
-  effect() {}
+  effect(fn) { fn?.(); }
 };
 plugin.apply(ctx);
-const speakRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/speak');
-const audioRoute = routes.find((r) => r.kind === 'prefix' && r.path === '/dsh-tts-audio');
+const speakRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-local-ai-tts-api/speak');
+const audioRoute = routes.find((r) => r.kind === 'prefix' && r.path === '/dsh-local-ai-tts-audio');
 
 function mockReq(url, body) {
   const chunks = body === undefined ? [] : [body];
@@ -103,7 +103,7 @@ function compare(name, a, b) {
 
 // 1) real speech base audio via the plugin's Edge provider
 const res = mockRes();
-await speakRoute.handler(mockReq('/dsh-tts-api/speak', JSON.stringify({
+await speakRoute.handler(mockReq('/dsh-local-ai-tts-api/speak', JSON.stringify({
   text: '这是一段用来测试不同索引对音色还原度影响的真实语音，请你仔细听。',
   voice: 'zh-CN-XiaoxuanNeural'
 })), res);
