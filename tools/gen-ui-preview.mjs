@@ -46,6 +46,11 @@ const html = `<!doctype html>
   pre.tip{color:var(--dsw-alias-label-tertiary);font-size:11px;margin:2px 0 0}
 </style></head>
 <body>
+  <h1>Local AI TTS — static UI fixture (not real Harness)</h1>
+  <h2>IndexTTS 2.5 — simplified settings</h2>
+  <div class="card"><div class="slot-settings" data-provider="local-runtime"></div></div>
+  <h2>GPT-SoVITS — simplified settings</h2>
+  <div class="card"><div class="slot-settings" data-provider="gpt-sovits-process"></div></div>
   <h2>1) auto-read pill (off)</h2>
   <div class="toolrow"><div class="slot-input" data-state="off"></div></div>
   <h2>2) auto-read pill (on)</h2>
@@ -55,7 +60,7 @@ const html = `<!doctype html>
   <h2>4) voice settings panel — RVC provider (onboarding)</h2>
   <div class="card"><div class="slot-settings" data-provider="rvc"></div></div>
   <h2>5) selection-read chip (demo)</h2>
-  <div class="card"><button type="button" class="dsh-tts-sel-btn">朗读选中文本</button> <span style="color:var(--dsw-alias-label-tertiary);font-size:11px">← 悬浮在选择旁的“朗读选中”chip（真实交互中由 mouseup 触发）</span></div>
+  <div class="card"><button type="button" class="dsh-local-ai-tts-sel-btn">朗读选中文本</button> <span style="color:var(--dsw-alias-label-tertiary);font-size:11px">← 悬浮在选择旁的“朗读选中”chip（真实交互中由 mouseup 触发）</span></div>
 
 <script>
 /* ---------- minimal React-agnostic shim + hooks + DOM renderer ---------- */
@@ -94,12 +99,13 @@ function mount(v){
     if(k==='children'||k==='key'||k==='ref') continue;
     if(typeof val==='function') continue; // handlers ignored for static render
     if(k==='className'){ el.setAttribute('class', val); }
-    else if(k==='style'&&val&&typeof val==='object'){ for(const sk in val){ try{ el.style[sk]=val[sk]; }catch(e){} } }
+    else if(k==='style'&&val&&typeof val==='object'){ for(const sk in val){ try{ el.style[sk]=typeof val[sk]==='number'&&!['opacity','zIndex','flex','order'].includes(sk)?val[sk]+'px':val[sk]; }catch(e){} } }
     else if(k==='value'){ try{ el.value=val; }catch(e){ el.setAttribute('value',val); } }
-    else if(k==='disabled'){ if(val) el.setAttribute('disabled',''); }
+    else if(k==='disabled'||k==='checked'){ if(val) el.setAttribute(k,''); }
     else { try{ el.setAttribute(k, val); }catch(e){} }
   }
   (v.children||[]).forEach(c=>{ const n=mount(c); if(n)el.appendChild(n); });
+  if (p.value !== undefined) el.value=p.value;
   return el;
 }
 /* ---------- slots / ctx (mirrors client-load) ---------- */
@@ -126,8 +132,8 @@ function evalClient(){
   fn(window,navigator,document,Audio);
 }
 function seedSettings(obj){
-  if(obj) localStorage.setItem('dsh-tts-settings', JSON.stringify(obj));
-  else localStorage.removeItem('dsh-tts-settings');
+  if(obj) localStorage.setItem('dsh-local-ai-tts-settings', JSON.stringify(obj));
+  else localStorage.removeItem('dsh-local-ai-tts-settings');
 }
 function renderSlot(slotName, container){
   try{
@@ -152,6 +158,12 @@ function logErr(msg){
 }
 
 /* off */
+seedSettings({autoRead:false, provider:'indextts-process', localProcess:{engine:'indextts', voice:'default'}});
+evalClient(); renderSlot('settings.plugins.tab', document.querySelector('.slot-settings[data-provider=local-runtime]'));
+
+seedSettings({autoRead:false, provider:'gpt-sovits-process', localProcess:{engine:'gpt-sovits', voice:'default'}});
+evalClient(); renderSlot('settings.plugins.tab', document.querySelector('.slot-settings[data-provider=gpt-sovits-process]'));
+
 seedSettings({autoRead:false, provider:'edge-tts', voice:'zh-CN-XiaoxuanNeural'});
 evalClient(); renderSlot('conversation.input.left', document.querySelector('.slot-input[data-state=off]'));
 
