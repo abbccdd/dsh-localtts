@@ -1,7 +1,12 @@
 {
-  "name": "@dsh-external/dsh-plugin-tts",
-  "description": "Edge TTS 语音大集成插件：消息朗读按钮、自动朗读开关、语音设置面板（Edge TTS）",
-  "version": "0.3.0",
+  "name": "@dsh-external/dsh-plugin-local-ai-tts",
+  "description": "DeepSeek Harness Local AI TTS Plugin — starts configured IndexTTS 2.5 and GPT-SoVITS workers with sentence-level playback, plus upstream Edge TTS and RVC support",
+  "version": "0.1.4",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abbccdd/dsh-localtts.git"
+  },
+  "homepage": "https://github.com/abbccdd/dsh-localtts",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -32,17 +37,18 @@
     "@deepseek-ai/dsh-web": "^0.1.0-rc.6",
     "react": "^18.2.0"
   },
-  "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-base": "^0.1.0-rc.6"
-  },
+  "files": ["lib/", "cordis.patch.yml", "README.md", "README.zh-CN.md", "LICENSE", "NOTICE.md", "CHANGELOG.md", "docs/LOCAL-RUNTIME-PROTOCOL.md", "docs/PROCESS-WORKER-PROTOCOL.md", "docs/ENGINE-DISCOVERY.md", "docs/VALIDATION.md", "docs/COEXISTENCE.md", "adapters/python_http.py", "adapters/worker_common.py", "adapters/voice_cache.py", "adapters/official_launch.py", "adapters/gradio-worker.py", "adapters/index-tts-worker.py", "adapters/gpt-sovits-worker.py"],
   "scripts": {
-    "test": "node tests/smoke.mjs",
+    "build": "node tools/build-client.mjs",
+    "test": "node --test tests/local-runtime.test.mjs tests/process-provider.test.mjs tests/local-client.test.mjs tests/local-settings.test.mjs tests/discovery.test.mjs tests/coexistence.test.mjs && node tests/client-load.mjs && node tests/i18n-keys.mjs && node tools/build-client.mjs --check && node tools/release-check.mjs",
+    "test:adapter": "python -m unittest discover -s tests -p test_*.py",
+    "test:upstream-live": "node tests/smoke.mjs",
+    "smoke:runtime": "node tools/smoke-runtime.mjs",
     "test:live": "node tests/rvc-server-live.mjs",
     "test:patch": "node tests/package-runtime-patch.mjs",
     "test:i18n": "node tests/i18n-keys.mjs",
     "test:client": "node tests/client-load.mjs",
-    "test:all": "node tests/smoke.mjs && node tests/rvc-server-live.mjs && node tests/package-runtime-patch.mjs && node tests/i18n-keys.mjs && node tests/client-load.mjs"
+    "test:all": "npm test && npm run test:adapter"
   },
   "license": "MIT"
 }

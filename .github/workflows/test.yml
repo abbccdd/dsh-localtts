@@ -2,7 +2,7 @@ name: test
 
 on:
   push:
-    branches: [main]
+    branches: [main, local-runtime-v0.1.0]
   pull_request:
 
 jobs:
@@ -20,14 +20,12 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - name: Install deps
-        run: npm install --no-audit --no-fund
-
-      - name: Smoke + i18n + client-load + patch
-        # live layer requires a real local rvc-server; it auto-SKIPs on CI when
-        # ~/rvc-work / RVC_URL is absent, so it won't false-fail here.
-        run: npm test && npm run test:i18n && npm run test:client && npm run test:patch
-
-      - name: Live (optional, when RVC runtime available)
-        run: npm run test:live
-        continue-on-error: true
+      - name: Mock Runtime, browser-controller, UI and release tests (no GPU or cloud)
+        run: npm test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Optional HTTP facade against mock objects only
+        run: npm run test:adapter
+      - name: Inspect npm package allowlist
+        run: npm pack --dry-run

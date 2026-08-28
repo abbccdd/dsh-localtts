@@ -1,4 +1,4 @@
-# dsh-plugin-tts bundle: register the Edge TTS voice plugin (host routes + client UI).
+# Local AI TTS bundle: independent Host/client registration alongside upstream.
 - insert:
-    - id: tts
-      name: '@dsh-external/dsh-plugin-tts'
+    - id: local-ai-tts
+      name: '@dsh-external/dsh-plugin-local-ai-tts'
