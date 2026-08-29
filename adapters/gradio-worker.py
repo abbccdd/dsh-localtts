@@ -9,12 +9,15 @@ import argparse
 import ast
 import base64
 from contextlib import redirect_stdout
+from io import BytesIO
 import inspect
 import os
 from pathlib import Path
 import re
 import sys
+import unicodedata
 from urllib.parse import quote, urlsplit, urlunsplit
+import wave
 
 # Embedded Python distributions may omit the script folder from sys.path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -144,7 +147,7 @@ def choice_value(value, props, engine):
 
 
 def synthesis_inputs(selected, config, engine, text, reference, prompt_text, prompt_lang, text_lang,
-                     duration_factor=1.0, speed_factor=1.0, handle_file=None):
+                     duration_factor=1.0, speed_factor=1.0, handle_file=None, overrides=None):
     # Keep the helper's historical positional form compatible with external
     # checks: the ninth argument used to be handle_file.
     if handle_file is None and callable(duration_factor):
@@ -170,6 +173,8 @@ def synthesis_inputs(selected, config, engine, text, reference, prompt_text, pro
             value = handle_file(reference)
         elif name in {"prompt_language", "prompt_lang", "text_language", "text_lang", "lang_choice"}:
             value = choice_value(provided[name], props, engine)
+        elif overrides and name in overrides:
+            value = overrides[name]
         elif name in provided:
             value = provided[name]
         elif name == "emo_control_method":
@@ -194,7 +199,7 @@ def synthesis_inputs(selected, config, engine, text, reference, prompt_text, pro
     return values
 
 
-def fetch_audio(result, selected, endpoint, config):
+def fetch_audio_bytes(result, selected, endpoint, config):
     count = len(selected[1].get("returns", []))
     value = result[selected[3]] if count > 1 and isinstance(result, (tuple, list)) else result
     while isinstance(value, dict) and "value" in value:
@@ -209,7 +214,45 @@ def fetch_audio(result, selected, endpoint, config):
         data = response.read(16 * 1024 * 1024 + 1)
     if len(data) > 16 * 1024 * 1024 or data[:4] != b"RIFF" or data[8:12] != b"WAVE":
         raise WorkerError("BAD_AUDIO", "WebUI did not return a bounded WAV audio file.")
+    return data
+
+
+def encode_audio(data):
     return {"mime": "audio/wav", "audioBase64": base64.b64encode(data).decode("ascii")}
+
+
+def wav_duration(data):
+    try:
+        with wave.open(BytesIO(data), "rb") as source:
+            rate = source.getframerate()
+            return source.getnframes() / rate if rate else None
+    except (EOFError, wave.Error):
+        return None
+
+
+def spoken_character_count(text):
+    return sum(unicodedata.category(ch)[0] in {"L", "N"} for ch in text)
+
+
+def gpt_output_needs_retry(text, data):
+    """Detect a short-prompt GPT runaway without interpreting speech text."""
+    duration = wav_duration(data)
+    spoken = spoken_character_count(text)
+    return duration is not None and spoken > 0 and duration > max(6.0, spoken * 0.55 + 1.5)
+
+
+def gpt_retry_is_preferable(text, first, retry):
+    first_duration, retry_duration = wav_duration(first), wav_duration(retry)
+    spoken = spoken_character_count(text)
+    # A shorter file is not automatically better: reject near-empty/silent
+    # retries before replacing the complete first result.
+    minimum = max(0.5, spoken * 0.08)
+    return (first_duration is not None and retry_duration is not None and
+            retry_duration >= minimum and retry_duration < first_duration)
+
+
+def fetch_audio(result, selected, endpoint, config):
+    return encode_audio(fetch_audio_bytes(result, selected, endpoint, config))
 
 
 def legacy_httpx(httpx, endpoint):
@@ -376,16 +419,32 @@ def main():
         text = str(request.get("text") or "").strip()
         if not text or len(text) > 70:
             raise WorkerError("TEXT", "Expected one nonempty sentence of at most 70 characters.")
-        values = synthesis_inputs(selected, client.config, args.engine, text, str(ref.resolve()),
-                                  args.prompt_text, args.prompt_lang, args.text_lang,
-                                  args.duration_factor, args.speed_factor, handle_file)
-        with redirect_stdout(sys.stderr):
-            job = client.submit(*values, api_name=selected[0])
-            result = job.result(timeout=float(os.environ.get("DSH_TTS_REQUEST_SECONDS", "180")))
-            outputs = job.outputs()
-            if outputs:
-                result = outputs[-1]
-        return fetch_audio(result, selected, endpoint, client.config)
+        def synthesize_once(overrides=None):
+            values = synthesis_inputs(selected, client.config, args.engine, text, str(ref.resolve()),
+                                      args.prompt_text, args.prompt_lang, args.text_lang,
+                                      args.duration_factor, args.speed_factor, handle_file, overrides)
+            with redirect_stdout(sys.stderr):
+                job = client.submit(*values, api_name=selected[0])
+                result = job.result(timeout=float(os.environ.get("DSH_TTS_REQUEST_SECONDS", "180")))
+                outputs = job.outputs()
+                if outputs:
+                    result = outputs[-1]
+            return fetch_audio_bytes(result, selected, endpoint, client.config)
+
+        audio = synthesize_once()
+        retry_attempted = retry_applied = False
+        if args.engine == "gpt-sovits" and gpt_output_needs_retry(text, audio):
+            retry_attempted = True
+            # Retry once through the WebUI's official sampling controls. Keep
+            # the original result if the conservative sample is even longer.
+            retry = synthesize_once({"top_k": 5, "top_p": 0.6, "temperature": 0.6,
+                                     "repetition_penalty": 1.5})
+            if gpt_retry_is_preferable(text, audio, retry):
+                audio = retry
+                retry_applied = True
+        response = encode_audio(audio)
+        response.update(retryAttempted=retry_attempted, retryApplied=retry_applied)
+        return response
 
     def close():
         # Never send /control, change weights, or kill an external service.

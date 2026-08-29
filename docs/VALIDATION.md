@@ -1,4 +1,4 @@
-# Validation and release gate — 0.1.5
+# Validation and release gate — 0.1.6
 
 ## Automated coverage
 

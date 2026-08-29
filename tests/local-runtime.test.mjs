@@ -186,6 +186,22 @@ test('bounded prefetch, pause backpressure, acknowledgement, client lease cleanu
   s.poll(c, [{ jobId: c.jobs[0].id, index: 1 }]); await eventually(() => m.calls.length === 4);
   now = 31000; s.sweep(); assert.equal(s.clients.size, 0);
 });
+
+test('active browser keeps a loaded WebUI warm between replies', async t => {
+  let now = 0, disposed = 0;
+  const s = new LocalRuntimeService({ now: () => now, providerFactory: () => ({
+    async synthesize() { return { mime: 'audio/wav', data: wav }; }, cancel() {}, dispose() { disposed++; },
+  }) });
+  t.after(() => s.dispose());
+  s.configure({ clientId: 'test_client_123456', config: config('http://127.0.0.1:9876'), sessionId: 's1', autoRead: true });
+  const c = s.client('test_client_123456');
+  s.read(c, '保持加载。'); await eventually(() => c.jobs[0]?.audio.length === 1);
+  s.poll(c, [{ jobId: c.jobs[0].id, index: 1, finished: true }]);
+  now = 61000; s.client(c.id); s.sweep();
+  assert.equal(s.clients.size, 1); assert.equal(disposed, 0);
+  now = 92001; s.sweep();
+  assert.equal(s.clients.size, 0); assert.equal(disposed, 1);
+});
 test('turning Auto Read off and switching session preserve a manual read', async t => {
   const m = await mock(t), { s, c } = service(m.endpoint); t.after(() => s.dispose());
   const result = s.read(c, '手动第一句。手动第二句。');
@@ -219,7 +235,7 @@ test('Host routes: status/config/read/poll/stop, CSRF/method validation, no clou
   assert.equal((await call({ provider: 'local-runtime', text: '句。'.repeat(80) }, {}, 'POST', speak)).code, 400);
 });
 
-test('completed turns reuse one worker; idle/expiry/config changes release it', async () => {
+test('completed turns and active idle time reuse one worker; expiry/config changes release it', async () => {
   let now = 0, created = 0, disposed = 0;
   const s = new LocalRuntimeService({ now: () => now, providerFactory: () => {
     created++;
@@ -234,14 +250,15 @@ test('completed turns reuse one worker; idle/expiry/config changes release it', 
     s.poll(c, [{ jobId, index: 1, finished: true }]);
   }
   assert.equal(created, 1); assert.equal(disposed, 0); assert.equal(c.jobs.length, 0);
-  now = 61001; s.client(id); s.sweep(); assert.equal(disposed, 1); assert.equal(s.pool.entries.size, 0);
+  now = 61001; s.client(id); s.sweep(); assert.equal(disposed, 0); assert.equal(s.pool.entries.size, 1);
+  s.read(c, '再读。'); await eventually(() => !c.pumping);
+  assert.equal(created, 1);
+  s.configure({ clientId: id, config: { ...config('http://127.0.0.1:9876'), voice: 'other' } });
+  assert.equal(disposed, 1);
   s.read(c, '再读。'); await eventually(() => !c.pumping);
   assert.equal(created, 2);
-  s.configure({ clientId: id, config: { ...config('http://127.0.0.1:9876'), voice: 'other' } });
-  assert.equal(disposed, 2);
-  s.read(c, '再读。'); await eventually(() => !c.pumping);
-  now += 31001; s.sweep(); assert.equal(disposed, 3); assert.equal(s.pool.entries.size, 0);
-  s.dispose(); assert.equal(disposed, 3);
+  now += 31001; s.sweep(); assert.equal(disposed, 2); assert.equal(s.pool.entries.size, 0);
+  s.dispose(); assert.equal(disposed, 2);
 });
 
 test('shared runtime serializes clients/probes and cancellation stays within its lease', async () => {

@@ -32,6 +32,15 @@ test('model speed controls are bounded and normalized', () => {
     assert.throws(() => normalizeConfig({ mode: 'process', engine: 'indextts', projectPath: 'p', modelDir: 'm', voice: 'v', [key]: value }), { code: 'SPEED_CONFIG' });
 });
 
+test('owned GPT WebUI preserves enough time for a real cold start', () => {
+  const c = normalizeConfig({ mode: 'process', launchPreset: 'webui', engine: 'gpt-sovits',
+    projectPath: 'gpt-sovits-project', pythonPath: 'python-custom', referenceAudio: 'voice.wav',
+    voice: 'voice.wav', webuiMode: 'auto', startupTimeoutMs: 120000 });
+  assert.equal(c.startupTimeoutMs, 300000);
+  const attached = normalizeConfig({ ...c, webuiMode: 'attach', webuiEndpoint: 'http://127.0.0.1:9872', startupTimeoutMs: 120000 });
+  assert.equal(attached.startupTimeoutMs, 120000);
+});
+
 test('process provider starts JSONL worker, checks health/voices and synthesizes', async () => {
   const p = new ProcessTTSProvider(config());
   try {

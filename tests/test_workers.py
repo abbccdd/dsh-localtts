@@ -9,6 +9,8 @@ import sys
 import tempfile
 import time
 import unittest
+import wave
+from io import BytesIO
 from unittest.mock import patch
 from types import SimpleNamespace
 import asyncio
@@ -145,6 +147,34 @@ class WorkerTests(unittest.TestCase):
                 # Event IDs and unrelated event order are immaterial.
                 config["dependencies"].insert(0, {"id": 999, "api_name": "change_model", "inputs": []})
                 self.assertEqual(worker.select_api(info, config, engine)[0], selected[0])
+
+    def test_gpt_runaway_duration_detection_and_official_sampling_overrides(self):
+        def wav(seconds, rate=32000):
+            out = BytesIO()
+            with wave.open(out, "wb") as target:
+                target.setnchannels(1); target.setsampwidth(2); target.setframerate(rate)
+                target.writeframes(b"\0\0" * int(seconds * rate))
+            return out.getvalue()
+
+        self.assertTrue(worker.gpt_output_needs_retry("短句测试。", wav(9)))
+        self.assertFalse(worker.gpt_output_needs_retry("短句测试。", wav(2)))
+        self.assertFalse(worker.gpt_output_needs_retry("😊", wav(9)))
+        self.assertTrue(worker.gpt_retry_is_preferable("短句测试。", wav(9), wav(2)))
+        self.assertFalse(worker.gpt_retry_is_preferable("短句测试。", wav(9), wav(0.2)))
+        info, config = schema("gpt-sovits")
+        api = info["named_endpoints"]["/get_tts_wav"]
+        base = len(api["parameters"])
+        for offset, (name, default) in enumerate((("top_k", 20), ("top_p", 1.0), ("temperature", 1.0), ("repetition_penalty", 1.35))):
+            api["parameters"].append({"parameter_name": name, "parameter_has_default": True, "parameter_default": default})
+            config["components"].append({"id": base + offset, "type": "number", "props": {"value": default}})
+            config["dependencies"][0]["inputs"].append(base + offset)
+        selected = worker.select_api(info, config, "gpt-sovits")
+        values = worker.synthesis_inputs(selected, config, "gpt-sovits", "测试", "/ref.wav", "参考", "zh", "zh",
+                                         handle_file=lambda f: f,
+                                         overrides={"top_k": 5, "top_p": 0.6, "temperature": 0.6, "repetition_penalty": 1.5})
+        mapped = dict(zip((p["parameter_name"] for p in api["parameters"]), values))
+        self.assertEqual({k: mapped[k] for k in ("top_k", "top_p", "temperature", "repetition_penalty")},
+                         {"top_k": 5, "top_p": 0.6, "temperature": 0.6, "repetition_penalty": 1.5})
 
     def test_unknown_management_ambiguous_or_required_inputs_fail_closed(self):
         info, config = schema()

@@ -1,6 +1,6 @@
 # DeepSeek Harness Local AI TTS Plugin
 
-[English](README.md) | 简体中文 · **v0.1.5 发布候选版** · MIT
+[English](README.md) | 简体中文 · **v0.1.6 发布候选版** · MIT
 
 为 DeepSeek Harness 增加本地进程 TTS Provider。插件启动用户已安装的 **IndexTTS 2.5** 或 **GPT-SoVITS** worker，逐句合成并在浏览器播放，不需要打开 WebUI。合成、播放与 Harness 消息生成独立进行。
 

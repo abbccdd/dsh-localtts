@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.6 — 2026-08-29
+
+- Keep an owned official WebUI model warm while its browser client remains active; stale clients and DSH shutdown still release the worker.
+- Raise the effective automatic GPT-SoVITS WebUI cold-start allowance to five minutes for older saved settings.
+- Detect implausibly long GPT-SoVITS single-sentence WAVs and retry once through the official sampling controls, while rejecting near-empty retries.
+
 ## 0.1.5 — 2026-08-29
 
 - Make the plugin's automatic UI language follow the active DSH locale before the browser locale, while keeping explicit Chinese/English overrides.
