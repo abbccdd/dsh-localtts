@@ -48,11 +48,16 @@ const slots = {
   inject(slot, fn) { injectedComponents.push({ slot, fn }); },
   register(spec, component) { return component; }, // real host returns the registered component
 };
+let activeHostLocale = 'zh';
+const hostLocale = {
+  getSnapshot: () => ({ active: activeHostLocale }),
+  subscribe: () => () => {},
+};
 const ctx = {
-  get(name) { if (name === 'slots') return slots; return undefined; },
+  get(name) { if (name === 'slots') return slots; if (name === 'locale') return hostLocale; return undefined; },
   effect() {},
 };
-try { Object.defineProperty(globalThis, 'navigator', { value: { language: 'zh-CN' }, configurable: true }); }
+try { Object.defineProperty(globalThis, 'navigator', { value: { languages: ['en-US'], language: 'en-US' }, configurable: true }); }
 catch (e) { /* already settable */ }
 globalThis.window = {
   addEventListener() {}, removeEventListener() {},
@@ -95,6 +100,7 @@ try {
   try {
     const hooks = globalThis.window.__dshLocalAiTtsI18n;
     check('i18n hook exposed for tests', !!hooks && typeof hooks.setLang === 'function');
+    check('auto language follows DSH locale before browser locale', hooks.current() === 'zh', 'current()=' + hooks.current());
     // switch to English -> must persist
     hooks.setLang('en');
     check('setLang("en") persists to localStorage', memStore.get('dsh-local-ai-tts-lang') === 'en',

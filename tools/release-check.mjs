@@ -21,7 +21,7 @@ for (const file of files) {
   if (credential.test(content)) problems.push(`${file}: possible credential`);
 }
 const pkg = JSON.parse(readFileSync(path.join(root, 'package.json')));
-if (pkg.version !== '0.1.4' || pkg.name !== '@dsh-external/dsh-plugin-local-ai-tts') problems.push('package.json: inconsistent release identity');
+if (pkg.version !== '0.1.5' || pkg.name !== '@dsh-external/dsh-plugin-local-ai-tts') problems.push('package.json: inconsistent release identity');
 if (pkg.dependencies && Object.keys(pkg.dependencies).length) problems.push('package.json: review newly introduced runtime dependencies');
 for (const name of ['README.md', 'README.zh-CN.md', 'LICENSE', 'NOTICE.md', 'CHANGELOG.md', 'docs/LOCAL-RUNTIME-PROTOCOL.md', 'docs/VALIDATION.md'])
   if (!existsSync(path.join(root, name))) problems.push(`missing ${name}`);

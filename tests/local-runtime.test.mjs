@@ -57,6 +57,14 @@ test('strict Chinese/English sentence splitting, streamed deltas, soft and hard 
   assert.deepEqual(sentences('好。是。行。'), ['好。', '是。', '行。']);
   assert.ok(sentences('😀'.repeat(150)).every(s => Array.from(s).length <= 70));
 });
+test('visual dash separators are never sent to TTS, including streamed pairs', () => {
+  assert.deepEqual(sentences('妈妈说：星星——它只是影子。哼两句——'), ['妈妈说：星星 它只是影子。', '哼两句']);
+  assert.deepEqual(sentences('第一段。\n---\n第二段。\n━━━\n'), ['第一段。', '第二段。']);
+  const streamed = new SentenceBuffer();
+  assert.deepEqual(streamed.feed('星星—'), []);
+  assert.deepEqual(streamed.feed('—它只是水面的影子。'), ['星星 它只是水面的影子。']);
+  assert.deepEqual(streamed.flush(), []);
+});
 test('IndexTTS adapter health, voices and request contract; no inference options', async t => {
   const m = await mock(t); const p = createProvider(config(m.endpoint), quiet);
   assert.ok(p instanceof IndexTTSAdapter); assert.equal((await p.healthCheck()).ready, true);

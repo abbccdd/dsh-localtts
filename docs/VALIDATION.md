@@ -1,4 +1,4 @@
-# Validation and release gate — 0.1.4
+# Validation and release gate — 0.1.5
 
 ## Automated coverage
 
@@ -7,7 +7,7 @@ Run `npm test` and `npm run test:adapter`. Tests require no GPU, downloaded mode
 - Configuration validation, localhost defaults, custom ports/base paths, private LAN consent, public URL/credentials/query rejection.
 - IndexTTS and GPT-SoVITS process worker contracts, JSONL health/voices/synthesis, worker startup and cleanup; legacy HTTP adapters remain covered for compatibility.
 - Offline service, full-response timeout, HTTP cancellation, redirects, malformed payloads, error redaction, explicit debug logging.
-- Three Chinese/English sentences → exactly three Runtime requests; short sentences never merge; 55/70-character limits; streamed decimal/tail handling.
+- Three Chinese/English sentences → exactly three Runtime requests; short sentences never merge; 55/70-character limits; streamed decimal/tail handling; visual dash separators are removed before synthesis.
 - Nonblocking event ingestion, duplicate `seq`, final-message deduplication, repeated React session snapshots, session separation.
 - Failure recovery, cancellation and turn suppression, switching engine/voice, bounded prefetch, pause backpressure, client expiry.
 - Browser controller schedules three consecutive Web Audio buffers and acknowledges them after completion (mock AudioContext).

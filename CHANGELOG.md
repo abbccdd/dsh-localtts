@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.5 — 2026-08-29
+
+- Make the plugin's automatic UI language follow the active DSH locale before the browser locale, while keeping explicit Chinese/English overrides.
+- Remove Chinese em dashes, box-drawing separators and Markdown horizontal rules from speech input in both browser and Host Runtime paths.
+
 ## 0.1.4 — 2026-08-29
 
 - Bootstrap bundled adapter imports explicitly for Windows embedded Python / isolated module paths; do not edit the engine's `pythonXY._pth`.
