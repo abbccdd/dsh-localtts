@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.8 — 2026-08-29
+
+- Shorten only an unusually long opening segment of manual/history reads so the first audio can play while later text is synthesized.
+- Keep streamed Auto Read sentence boundaries unchanged.
+- Begin loading a valid owned process backend in the background when Auto Read is enabled, instead of waiting for the first history click or reply.
+
 ## 0.1.7 — 2026-08-29
 
 - Remember separate IndexTTS and GPT-SoVITS project/model/voice settings and restore them when switching engines.

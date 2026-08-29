@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
-import { SentenceBuffer, sentences } from '../lib/local-runtime/sentence-buffer.mjs';
+import { SentenceBuffer, manualSentences, sentences } from '../lib/local-runtime/sentence-buffer.mjs';
 import { DEFAULTS, normalizeConfig, createProvider, IndexTTSAdapter, GPTSoVITSAdapter, pcmToWav } from '../lib/local-runtime/provider.mjs';
 import { LocalRuntimeService, registerLocalRuntime } from '../lib/local-runtime/service.mjs';
 import { apply } from '../lib/index.mjs';
@@ -64,6 +64,34 @@ test('visual dash separators are never sent to TTS, including streamed pairs', (
   assert.deepEqual(streamed.feed('星星—'), []);
   assert.deepEqual(streamed.feed('—它只是水面的影子。'), ['星星 它只是水面的影子。']);
   assert.deepEqual(streamed.flush(), []);
+});
+test('manual history reading shortens only a long opening segment for faster first audio', () => {
+  assert.deepEqual(manualSentences('短句。第二句。'), ['短句。', '第二句。']);
+  const natural = manualSentences('妈妈告诉你一个很重要的小秘密，天上的星星从来不会真的掉下来。第二句。');
+  assert.equal(natural[0], '妈妈告诉你一个很重要的小秘密，');
+  assert.equal(natural.join(''), '妈妈告诉你一个很重要的小秘密，天上的星星从来不会真的掉下来。第二句。');
+  const hard = manualSentences('长'.repeat(60) + '。尾句。');
+  assert.equal(Array.from(hard[0]).length, 24);
+  assert.equal(hard.join(''), '长'.repeat(60) + '。尾句。');
+});
+test('Auto Read process configuration starts loading in the background before its first job', async t => {
+  let health = 0, synthesized = 0, disposed = 0;
+  const s = new LocalRuntimeService({ providerFactory: () => ({
+    async healthCheck() { health++; await delay(10); return { ready: true }; },
+    async synthesize() { synthesized++; return { mime: 'audio/wav', data: wav }; },
+    cancel() {}, dispose() { disposed++; },
+  }) });
+  t.after(() => s.dispose());
+  s.configure({ clientId: 'preload_client_123456', autoRead: true, config: {
+    mode: 'process', launchPreset: 'custom', engine: 'indextts', command: process.execPath, voice: 'default',
+  } });
+  await eventually(() => health === 1);
+  assert.equal(synthesized, 0);
+  assert.ok(s.clients.get('preload_client_123456').provider);
+  s.configure({ clientId: 'preload_client_123456', autoRead: false, config: {
+    mode: 'process', launchPreset: 'custom', engine: 'indextts', command: process.execPath, voice: 'default',
+  } });
+  assert.equal(disposed, 0, 'turning Auto Read off keeps the prepared model warm');
 });
 test('IndexTTS adapter health, voices and request contract; no inference options', async t => {
   const m = await mock(t); const p = createProvider(config(m.endpoint), quiet);

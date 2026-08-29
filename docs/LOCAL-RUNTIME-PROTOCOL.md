@@ -54,7 +54,7 @@ PCM supports one or two channels, 8–192 kHz. It is wrapped in a WAV container 
 
 ## Sentence and queue semantics
 
-Chinese `。！？` and English `.!?` end a sentence. Decimal points between digits are exempt. An English period at the end of a streaming delta waits for the next character or final flush. At about 55 characters, soft punctuation `，；：,;:` can split a long sentence; 70 Unicode code points is the hard limit. Short sentences are never merged. English abbreviations may split at a period; this release does not implement linguistic abbreviation detection.
+Chinese `。！？` and English `.!?` end a sentence. Decimal points between digits are exempt. An English period at the end of a streaming delta waits for the next character or final flush. At about 55 characters, soft punctuation `，；：,;:` can split a long sentence; 70 Unicode code points is the hard limit. Short sentences are never merged. For a manual/history read only, an opening segment longer than 28 code points is split once near the beginning so first audio can return while the rest is synthesized; streamed Auto Read keeps its normal sentence boundaries. English abbreviations may split at a period; this release does not implement linguistic abbreviation detection.
 
 The Host listens to the existing `session/event` API: `assistant/chunk` with `data.chunk.type="text-delta"`, then `assistant/message` and `turn/end`. `data.turn`, `data.step`, session ID and event `seq` prevent replay. Final-message text is only used if that step had no streamed text. React completion effects do not synthesize again in Local Runtime mode. Only the active subscribed session is read; historical replies are not replayed on initial subscription.
 

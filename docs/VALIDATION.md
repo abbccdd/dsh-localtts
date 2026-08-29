@@ -1,4 +1,4 @@
-# Validation and release gate — 0.1.7
+# Validation and release gate — 0.1.8
 
 ## Automated coverage
 
@@ -20,7 +20,7 @@ Run `npm test` and `npm run test:adapter`. Tests require no GPU, downloaded mode
 - Official backend launch guards: source-only entry inspection, IndexTTS/GPT API-shape selection, Gradio 4/5 metadata and loopback checks, explicit saved GPT weight selection, occupied-port refusal in auto mode, and owned-process EOF cleanup.
 - Generated client consistency, package identity, original LICENSE preservation and release artifact scan.
 
-Preparation results: 73 Node tests (including discovery, settings, process-worker, coexistence and runtime-pool tests), 57 client-load checks, 6 i18n checks, and 14 Python adapter tests passed on Windows, Node 24.13.1 / Python 3.11.9. The Gradio 4/5 official-shape fixture smoke also passed. This is not a claim that GitHub Actions has already run remotely.
+Preparation results: 75 Node tests (including discovery, settings, process-worker, coexistence and runtime-pool tests), 57 client-load checks, 6 i18n checks, and 14 Python adapter tests passed on Windows, Node 24.13.1 / Python 3.11.9. The Gradio 4/5 official-shape fixture smoke also passed. This is not a claim that GitHub Actions has already run remotely.
 
 The static UI fixture was opened in a real browser and inspected after this change. Both engines show project/reference fields and correctly selected providers; advanced paths are hidden by default and the native details control expands. The fixture uses the upstream lightweight DOM renderer, not a running Harness/React application, so it is visual QA only; discovery/editing behavior is covered separately by controller tests. Run `node tools/gen-ui-preview.mjs` then `node tools/preview-server.mjs` to reproduce; generated HTML/screenshots are excluded from Git.
 
