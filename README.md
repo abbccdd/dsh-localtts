@@ -4,6 +4,8 @@ English | [简体中文](README.zh-CN.md) · Version **0.1.8 release candidate**
 
 Read DeepSeek Harness assistant replies with **IndexTTS 2.5** or **GPT-SoVITS** started by the plugin. The user supplies the existing Python/project/model configuration; the plugin starts a thin JSONL worker and sends one natural sentence per request. No WebUI page is required.
 
+![Local AI TTS settings in Simplified Chinese](assets/local-ai-tts-overview-zh.png)
+
 Based on [1624318455/dsh-plugin-tts](https://github.com/1624318455/dsh-plugin-tts), commit `ec0cf87ef52abb81ae91681a966aa3096365e631`. Its message buttons, Auto Read toggle, Edge/RVC providers, pause/stop controls, settings and Harness API integration are reused. See [NOTICE](NOTICE.md).
 
 **This is a connector and process launcher, not a model distribution.** It does not install, trim, retrain or modify TTS models. It only starts the executable and worker command that you configure. No checkpoints, reference recordings, voice caches, Python environments or generated audio are included.
@@ -42,6 +44,8 @@ dsh web
 ```
 
 Restart `dsh web` and refresh its browser page after installation. On Windows a `file:` installation may be a copy; reinstall the local package after changing it. Do not edit Harness core files.
+
+The community DSH Market listing uses this repository as its source. A prebuilt release tarball is preferred when available, so installation does not run a repository build script.
 
 ## Coexistence with the original plugin
 

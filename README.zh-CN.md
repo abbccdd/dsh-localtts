@@ -4,6 +4,8 @@
 
 为 DeepSeek Harness 增加本地进程 TTS Provider。插件启动用户已安装的 **IndexTTS 2.5** 或 **GPT-SoVITS** worker，逐句合成并在浏览器播放，不需要打开 WebUI。合成、播放与 Harness 消息生成独立进行。
 
+![本地 AI TTS 中文设置界面](assets/local-ai-tts-overview-zh.png)
+
 基于 [1624318455/dsh-plugin-tts](https://github.com/1624318455/dsh-plugin-tts)，上游提交 `ec0cf87ef52abb81ae91681a966aa3096365e631`。复用消息朗读按钮、Auto Read、Edge/RVC Provider、停止/暂停、设置面板、持久化与 Harness 插件 API。保留上游 MIT 版权和 LICENSE，详见 [NOTICE](NOTICE.md)。
 
 **插件不包含模型。** 不安装、裁剪、训练或修改模型；只启动用户配置的 worker 命令。不打包权重、参考音频、用户音色缓存、Python 环境或生成音频。
@@ -42,6 +44,8 @@ dsh web
 ```
 
 重启 `dsh web` 并刷新浏览器。在 Windows 上，`file:` 安装可能复制文件；修改源码后需要重新安装该本地包。不要修改 Harness 核心。
+
+社区 DSH 插件市场以本仓库作为安装来源；有预构建 Release 包时会优先使用，安装过程无需执行仓库构建脚本。
 
 ## 配置本地进程（IndexTTS 2.5 / GPT-SoVITS）
 

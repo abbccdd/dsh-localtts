@@ -2,6 +2,7 @@
   "name": "@dsh-external/dsh-plugin-local-ai-tts",
   "description": "Local IndexTTS 2.5 and GPT-SoVITS sentence-level speech synthesis and playback for DeepSeek Harness",
   "version": "0.1.8",
+  "author": "abbccdd",
   "repository": {
     "type": "git",
     "url": "https://github.com/abbccdd/dsh-localtts.git"
@@ -51,7 +52,7 @@
     "@deepseek-ai/dsh-web": "^0.1.0-rc.6",
     "react": "^18.2.0"
   },
-  "files": ["lib/", "cordis.patch.yml", "README.md", "README.zh-CN.md", "LICENSE", "NOTICE.md", "CHANGELOG.md", "docs/LOCAL-RUNTIME-PROTOCOL.md", "docs/PROCESS-WORKER-PROTOCOL.md", "docs/ENGINE-DISCOVERY.md", "docs/VALIDATION.md", "docs/COEXISTENCE.md", "adapters/python_http.py", "adapters/worker_common.py", "adapters/voice_cache.py", "adapters/official_launch.py", "adapters/gradio-worker.py", "adapters/index-tts-worker.py", "adapters/gpt-sovits-worker.py"],
+  "files": ["lib/", "assets/local-ai-tts-overview-zh.png", "assets/local-ai-tts-settings-zh.png", "screenshots.json", "cordis.patch.yml", "README.md", "README.zh-CN.md", "LICENSE", "NOTICE.md", "CHANGELOG.md", "docs/LOCAL-RUNTIME-PROTOCOL.md", "docs/PROCESS-WORKER-PROTOCOL.md", "docs/ENGINE-DISCOVERY.md", "docs/VALIDATION.md", "docs/COEXISTENCE.md", "adapters/python_http.py", "adapters/worker_common.py", "adapters/voice_cache.py", "adapters/official_launch.py", "adapters/gradio-worker.py", "adapters/index-tts-worker.py", "adapters/gpt-sovits-worker.py"],
   "scripts": {
     "build": "node tools/build-client.mjs",
     "test": "node --test tests/local-runtime.test.mjs tests/process-provider.test.mjs tests/local-client.test.mjs tests/local-settings.test.mjs tests/discovery.test.mjs tests/coexistence.test.mjs && node tests/client-load.mjs && node tests/i18n-keys.mjs && node tools/build-client.mjs --check && node tools/release-check.mjs",
