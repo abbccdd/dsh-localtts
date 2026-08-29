@@ -290,7 +290,8 @@ if (!failed) {
 }
 
 try {
-  const local = { mode: 'process', launchPreset: 'builtin', engine: 'gpt-sovits', pythonPath: process.execPath, projectPath: 'C:/tts', modelDir: '', presetsRoot: '', device: '', apiScript: 'C:/tts/api_v2.py', ttsConfig: '', referenceAudio: 'C:/tts/ref.wav', promptText: '', promptLang: 'zh', textLang: 'zh', durationFactor: 1, speedFactor: 1, port: 9880, command: '', args: [], cwd: '', voice: 'other', startupTimeoutMs: 30000, timeoutMs: 30000, autoStart: true, debug: false };
+  const local = { mode: 'process', launchPreset: 'builtin', engine: 'gpt-sovits', pythonPath: process.execPath, projectPath: 'C:/tts', modelDir: '', presetsRoot: '', device: '', apiScript: 'C:/tts/api_v2.py', ttsConfig: '', referenceAudio: 'C:/tts/ref.wav', promptText: '', promptLang: 'zh', textLang: 'zh', durationFactor: 1, speedFactor: 1, port: 9880, command: '', args: [], cwd: '', voice: 'other', startupTimeoutMs: 30000, timeoutMs: 30000, autoStart: true, debug: false,
+    engineProfiles: { indextts: { engine: 'indextts', projectPath: 'C:/index', modelDir: 'C:/index/models', voice: 'C:/index/ref.wav' } } };
   memStore.set('dsh-local-ai-tts-settings', JSON.stringify({ provider: 'gpt-sovits-process', autoRead: true, localProcess: local }));
   new Function('window', 'navigator', 'document', 'Audio', clientSrc)(window, navigator, document, Audio);
   const saved = window.__dshLocalAiTtsSettings;
@@ -310,7 +311,9 @@ try {
   check('connection test, engine, project and reference controls render', localNodes.some(n => n.children?.includes('Test Connection') || n.children?.includes('测试连接')) && localNodes.some(n => n.type === 'select' && n.props.value === 'gpt-sovits') && localNodes.some(n => n.type === 'input' && n.props.value === local.projectPath) && localNodes.some(n => n.type === 'input' && n.props.value === local.referenceAudio));
   check('advanced paths are collapsed by default', localNodes.some(n => n.type === 'details' && !n.props.open));
   providerSelect.props.onChange({ target: { value: 'indextts-process' } });
-  check('parent engine switch persists matching provider and clears stale project', saved.get().provider === 'indextts-process' && saved.get().localProcess.engine === 'indextts' && saved.get().localProcess.projectPath === '');
+  check('parent engine switch restores its saved project without leaking the GPT project', saved.get().provider === 'indextts-process' && saved.get().localProcess.engine === 'indextts' && saved.get().localProcess.projectPath === 'C:/index' && saved.get().localProcess.projectPath !== local.projectPath);
+  const profiles = JSON.parse(memStore.get('dsh-local-ai-tts-settings')).localProcess.engineProfiles;
+  check('engine profiles survive localStorage round-trip', profiles.indextts.projectPath === 'C:/index' && profiles['gpt-sovits'].projectPath === 'C:/tts');
   saved.reset();
   check('Local process reset removes command and personal voice', saved.get().localProcess.command === '' && saved.get().localProcess.voice === 'default');
 } catch (e) { check('Local Runtime persistence/UI', false, String(e.stack)); }

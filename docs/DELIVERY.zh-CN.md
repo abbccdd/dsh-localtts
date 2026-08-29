@@ -1,8 +1,8 @@
-# v0.1.6 发布候选版交付报告
+# v0.1.7 发布候选版交付报告
 
 ## 1. 上游复用
 
-本地 fork 基于 `1624318455/dsh-plugin-tts` 提交 `ec0cf87ef52abb81ae91681a966aa3096365e631`，当前发布候选版为 `v0.1.6`。复用 Host/client 插件注册、assistant 消息按钮、Auto Read 开关、既有 Edge/RVC 链路、长文本播放、停止/暂停、主题与设置持久化。源码已推送到 `abbccdd/dsh-localtts`。
+本地 fork 基于 `1624318455/dsh-plugin-tts` 提交 `ec0cf87ef52abb81ae91681a966aa3096365e631`，当前发布候选版为 `v0.1.7`。复用 Host/client 插件注册、assistant 消息按钮、Auto Read 开关、既有 Edge/RVC 链路、长文本播放、停止/暂停、主题与设置持久化。源码已推送到 `abbccdd/dsh-localtts`。
 
 开始时发现的未提交 Local Runtime 草稿已先备份到仓库之外，再由模块化实现替代。该草稿的固定个人音色、端口及整段请求逻辑未进入新连接器。
 
@@ -79,4 +79,4 @@ dsh plugin --profile web add github:abbccdd/dsh-localtts
 
 仍需提供/确认：运行中的 Harness 页面、两个 worker 的本地 Python/项目/模型或参考音频路径和音色；完成三句话三请求且连续播放的两套验收；确认 GitHub owner/repo/tag 并替换 README 模板；运行远程 CI；确认 Runtime/模型/音色授权；审查上游 Edge/RVC 的可信本地部署边界。
 
-当前交付为可继续验收的仓库和 v0.1.6 发布候选版；尚未打稳定版 tag 或发布 npm 包，也不能声称全部用户验收要求已完成。
+当前交付为可继续验收的仓库和 v0.1.7 发布候选版；尚未打稳定版 tag 或发布 npm 包，也不能声称全部用户验收要求已完成。

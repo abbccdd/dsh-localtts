@@ -4,8 +4,8 @@ function createLocalController() {
   let sessionId = '', configured = '', remoteConfig = null, epoch = 0, busy = false, operations = Promise.resolve();
   let nodes = new Set(), received = new Set(), acknowledgements = [], nextTime = 0, currentJob = null;
   const defaults = { mode: 'process', launchPreset: 'webui', engine: 'indextts', pythonPath: '', projectPath: '', modelDir: '', presetsRoot: '', device: '', apiScript: '', ttsConfig: '', referenceAudio: '', promptText: '', promptLang: 'zh', textLang: 'zh', durationFactor: 1, speedFactor: 1, port: 9880, command: '', args: [], cwd: '', voice: 'default', startupTimeoutMs: 300000, timeoutMs: 180000, autoStart: true, debug: false,
-    webuiMode: 'auto', webuiEndpoint: '', webuiVariant: 'standard', gptVersion: '', gptModel: '', sovitsModel: '' };
-  shared.localProcess = { ...defaults };
+    webuiMode: 'auto', webuiEndpoint: '', webuiVariant: 'standard', gptVersion: '', gptModel: '', sovitsModel: '', engineProfiles: {} };
+  shared.localProcess = { ...defaults, engineProfiles: {} };
   // `local-runtime` is retained as an internal compatibility alias for older
   // persisted settings and older bundled test harnesses.
   shared.localRuntime = shared.localProcess;
@@ -42,7 +42,22 @@ function createLocalController() {
     if (!['indextts', 'gpt-sovits'].includes(engine)) return;
     stopSpeaking(); discoveryTicket++;
     const c = shared.localProcess;
-    if (c.engine !== engine) { resetLaunch(); c.projectPath = ''; }
+    if (c.engine !== engine) {
+      const profiles = c.engineProfiles && typeof c.engineProfiles === 'object' && !Array.isArray(c.engineProfiles)
+        ? { ...c.engineProfiles } : {};
+      const current = {};
+      for (const key of Object.keys(defaults)) if (key !== 'engineProfiles' && Object.hasOwn(c, key)) current[key] = c[key];
+      if (typeof c.endpoint === 'string') current.endpoint = c.endpoint;
+      profiles[c.engine] = current;
+      const saved = profiles[engine];
+      const restored = saved && typeof saved === 'object' && !Array.isArray(saved) && saved.engine === engine
+        ? { ...defaults, ...saved, engineProfiles: profiles }
+        : { ...defaults, engine, engineProfiles: profiles };
+      for (const key of Object.keys(c)) delete c[key];
+      Object.assign(c, restored);
+      discoveryResult = null;
+      pendingDiscovery = null;
+    }
     c.engine = engine;
     shared.provider = engine === 'gpt-sovits' ? 'gpt-sovits-process' : 'indextts-process';
     invalidateConfiguration(); saveSettings(); notify();

@@ -1,7 +1,7 @@
 {
   "name": "@dsh-external/dsh-plugin-local-ai-tts",
   "description": "Local IndexTTS 2.5 and GPT-SoVITS sentence-level speech synthesis and playback for DeepSeek Harness",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "repository": {
     "type": "git",
     "url": "https://github.com/abbccdd/dsh-localtts.git"

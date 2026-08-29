@@ -52,14 +52,28 @@ test('changing project clears stale launch fields, not common timeouts', () => {
   assert.deepEqual(h.shared.localProcess.args, []); assert.equal(h.shared.localProcess.voice, 'default');
   assert.equal(h.shared.localProcess.endpoint, undefined); assert.equal(h.shared.localProcess.timeoutMs, 42000);
 });
-test('engine selection saves provider and engine atomically and clears old paths', async () => {
-  const h = harness(); h.shared.localProcess.projectPath = '/old'; h.shared.localProcess.modelDir = '/old/models';
+test('engine selection saves atomically and restores each engine profile without leaking paths', async () => {
+  const h = harness(); Object.assign(h.shared.localProcess, { projectPath: '/index', modelDir: '/index/models', voice: '/index/ref.wav', textLang: 'JA' });
   h.controller.selectEngine('gpt-sovits');
   assert.equal(h.saves.at(-1).provider, 'gpt-sovits-process'); assert.equal(h.saves.at(-1).localProcess.engine, 'gpt-sovits');
   assert.equal(h.shared.localProcess.projectPath, ''); assert.equal(h.shared.localProcess.modelDir, '');
-  h.controller.updateSetting('referenceAudio', '/fixture/a.wav'); assert.equal(h.shared.localProcess.voice, '/fixture/a.wav');
+  h.controller.updateSetting('projectPath', '/gpt');
+  h.controller.updateSetting('referenceAudio', '/gpt/a.wav'); assert.equal(h.shared.localProcess.voice, '/gpt/a.wav');
   h.controller.updateSetting('voice', '/fixture/b.wav'); assert.equal(h.shared.localProcess.referenceAudio, '/fixture/b.wav');
-  await flush(); assert.equal(h.requests.length, 0);
+  Object.assign(h.shared.localProcess, { gptVersion: 'v2', gptModel: '/gpt/model.ckpt', sovitsModel: '/gpt/model.pth', textLang: 'zh' });
+  h.controller.selectEngine('indextts');
+  assert.equal(h.shared.localProcess.projectPath, '/index'); assert.equal(h.shared.localProcess.modelDir, '/index/models');
+  assert.equal(h.shared.localProcess.voice, '/index/ref.wav'); assert.equal(h.shared.localProcess.textLang, 'JA');
+  assert.equal(h.shared.localProcess.gptModel, '');
+  h.controller.selectEngine('gpt-sovits');
+  assert.equal(h.shared.localProcess.projectPath, '/gpt'); assert.equal(h.shared.localProcess.referenceAudio, '/fixture/b.wav');
+  assert.equal(h.shared.localProcess.gptModel, '/gpt/model.ckpt'); assert.equal(h.shared.localProcess.sovitsModel, '/gpt/model.pth');
+  assert.equal(h.shared.localProcess.modelDir, ''); assert.equal(h.shared.localProcess.textLang, 'zh');
+  assert.equal(h.saves.at(-1).localProcess.engineProfiles.indextts.projectPath, '/index');
+  await flush();
+  assert.equal(h.requests.filter(r => r.payload.action === 'discover' || r.payload.action === 'status').length, 0);
+  const configured = h.requests.filter(r => r.payload.action === 'configure').at(-1).payload;
+  assert.equal(configured.config.engine, 'gpt-sovits'); assert.equal(configured.config.projectPath, '/gpt');
 });
 test('an incomplete new project disables the previous Host Auto Read snapshot', async () => {
   const h = harness(); h.shared.autoRead = true; Object.assign(h.shared.localProcess, found().config);

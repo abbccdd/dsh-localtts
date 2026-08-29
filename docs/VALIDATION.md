@@ -1,4 +1,4 @@
-# Validation and release gate — 0.1.6
+# Validation and release gate — 0.1.7
 
 ## Automated coverage
 
@@ -11,7 +11,7 @@ Run `npm test` and `npm run test:adapter`. Tests require no GPU, downloaded mode
 - Nonblocking event ingestion, duplicate `seq`, final-message deduplication, repeated React session snapshots, session separation.
 - Failure recovery, cancellation and turn suppression, switching engine/voice, bounded prefetch, pause backpressure, client expiry.
 - Browser controller schedules three consecutive Web Audio buffers and acknowledges them after completion (mock AudioContext).
-- Existing UI bundle load/render, bilingual keys and settings persistence; simplified engine/project/reference controls, output-language selector, model speed control and collapsed advanced paths.
+- Existing UI bundle load/render, bilingual keys and settings persistence; simplified engine/project/reference controls, per-engine path restoration, output-language selector, model speed control and collapsed advanced paths.
 - Bounded read-only IndexTTS/GPT-SoVITS discovery, wrapper/Unicode layouts, missing or ambiguous candidates, incompatible Index config version, directory-link escape and audio count/depth limits; same-origin route validation with no client/worker creation.
 - Discovery request deduplication, preservation of manual overrides, late-response rejection, engine/provider synchronization, GPT reference synchronization and disabling stale Host Auto Read during incomplete configuration.
 - Unmodified upstream 0.3.0 Host/client fixtures loaded in both orders: no route/slot/style collisions, no original settings/global changes, and independent disposal.
@@ -20,7 +20,7 @@ Run `npm test` and `npm run test:adapter`. Tests require no GPU, downloaded mode
 - Official backend launch guards: source-only entry inspection, IndexTTS/GPT API-shape selection, Gradio 4/5 metadata and loopback checks, explicit saved GPT weight selection, occupied-port refusal in auto mode, and owned-process EOF cleanup.
 - Generated client consistency, package identity, original LICENSE preservation and release artifact scan.
 
-Preparation results: 64 Node tests (including discovery, settings, process-worker, coexistence and runtime-pool tests), 55 client-load checks, 6 i18n checks, and 11 Python adapter tests passed on Windows, Node 24.13.1 / Python 3.11.9. The Gradio 4/5 official-shape fixture smoke also passed. This is not a claim that GitHub Actions has already run remotely.
+Preparation results: 73 Node tests (including discovery, settings, process-worker, coexistence and runtime-pool tests), 57 client-load checks, 6 i18n checks, and 14 Python adapter tests passed on Windows, Node 24.13.1 / Python 3.11.9. The Gradio 4/5 official-shape fixture smoke also passed. This is not a claim that GitHub Actions has already run remotely.
 
 The static UI fixture was opened in a real browser and inspected after this change. Both engines show project/reference fields and correctly selected providers; advanced paths are hidden by default and the native details control expands. The fixture uses the upstream lightweight DOM renderer, not a running Harness/React application, so it is visual QA only; discovery/editing behavior is covered separately by controller tests. Run `node tools/gen-ui-preview.mjs` then `node tools/preview-server.mjs` to reproduce; generated HTML/screenshots are excluded from Git.
 

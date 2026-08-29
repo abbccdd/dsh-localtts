@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.7 — 2026-08-29
+
+- Remember separate IndexTTS and GPT-SoVITS project/model/voice settings and restore them when switching engines.
+- Persist both engine profiles across browser refreshes without carrying one engine's paths into the other.
+
 ## 0.1.6 — 2026-08-29
 
 - Keep an owned official WebUI model warm while its browser client remains active; stale clients and DSH shutdown still release the worker.

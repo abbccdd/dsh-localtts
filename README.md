@@ -1,6 +1,6 @@
 # DeepSeek Harness Local AI TTS Plugin
 
-English | [简体中文](README.zh-CN.md) · Version **0.1.6 release candidate** · MIT
+English | [简体中文](README.zh-CN.md) · Version **0.1.7 release candidate** · MIT
 
 Read DeepSeek Harness assistant replies with **IndexTTS 2.5** or **GPT-SoVITS** started by the plugin. The user supplies the existing Python/project/model configuration; the plugin starts a thin JSONL worker and sends one natural sentence per request. No WebUI page is required.
 
@@ -22,7 +22,7 @@ Harness assistant events → SentenceBuffer → local process provider
 - An existing IndexTTS 2.5 or GPT-SoVITS installation, its Python environment and model files.
 - A worker command implementing the [JSONL worker protocol](docs/PROCESS-WORKER-PROTOCOL.md). Thin examples are included in `adapters/`; they import/start the user's existing model project and do not contain weights.
 
-The plugin discovers known paths only inside the selected local project/wrapper folder. It does not scan whole disks, install dependencies or open WebUI pages. Detected and manually configured paths are kept in browser settings.
+The plugin discovers known paths only inside the selected local project/wrapper folder. It does not scan whole disks, install dependencies or open WebUI pages. Detected and manually configured paths are kept in browser settings. IndexTTS and GPT-SoVITS retain separate project/model/voice profiles, so switching back restores that engine's previous paths without copying them into the other engine.
 
 ## Install
 
@@ -142,7 +142,7 @@ Mock tests use Node built-ins and Python stdlib: no npm install, GPU, model down
 
 For an already running real service: `npm run smoke:runtime -- --engine indextts --endpoint http://127.0.0.1:8765 --voice default` (replace values). This checks health plus exactly three HTTP syntheses and writes no audio files. It is **not** a substitute for the real Harness/browser acceptance in [VALIDATION](docs/VALIDATION.md).
 
-Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), and [LICENSE](LICENSE) before tagging `v0.1.6`. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. The GitHub source repository is available; no npm package or stable release tag is claimed yet.
+Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), and [LICENSE](LICENSE) before tagging `v0.1.7`. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. The GitHub source repository is available; no npm package or stable release tag is claimed yet.
 
 ## License
 
