@@ -2,7 +2,7 @@
 
 ## 1. 上游复用
 
-本地 fork 基于 `1624318455/dsh-plugin-tts` 提交 `ec0cf87ef52abb81ae91681a966aa3096365e631`，当前发布候选版为 `v0.1.4`。复用 Host/client 插件注册、assistant 消息按钮、Auto Read 开关、既有 Edge/RVC 链路、长文本播放、停止/暂停、主题与设置持久化。没有创建远程 GitHub fork 或推送。
+本地 fork 基于 `1624318455/dsh-plugin-tts` 提交 `ec0cf87ef52abb81ae91681a966aa3096365e631`，当前发布候选版为 `v0.1.4`。复用 Host/client 插件注册、assistant 消息按钮、Auto Read 开关、既有 Edge/RVC 链路、长文本播放、停止/暂停、主题与设置持久化。源码已推送到 `abbccdd/dsh-localtts`。
 
 开始时发现的未提交 Local Runtime 草稿已先备份到仓库之外，再由模块化实现替代。该草稿的固定个人音色、端口及整段请求逻辑未进入新连接器。
 
@@ -53,13 +53,13 @@
 dsh plugin --profile web add "file:/path/to/dsh-plugin-local-ai-tts"
 ```
 
-用户发布实际仓库/tag 后：
+从 GitHub 安装当前源码：
 
 ```sh
-dsh plugin --profile web add "github:abbccdd/dsh-localtts#main"
+dsh plugin --profile web add github:abbccdd/dsh-localtts
 ```
 
-实际路径/账号需替换；可以与上游同时启用。检测到原版后，本插件显示“本地语音”和 Local 按钮，并跳过重复的 Edge/RVC、选中文本朗读、快捷键与审批播报。原版 Auto Read 开启或状态未知时，本地自动朗读暂停；手动仍可用。安装后重启 `dsh web` 并刷新页面。卸载：`dsh plugin --profile web remove @dsh-external/dsh-plugin-local-ai-tts`。不会卸载原版或删除其设置。真正 Harness 双插件运行仍待实机验收。
+可以与上游同时启用。检测到原版后，本插件显示“本地语音”和 Local 按钮，并跳过重复的 Edge/RVC、选中文本朗读、快捷键与审批播报。原版 Auto Read 开启或状态未知时，本地自动朗读暂停；手动仍可用。安装后重启 `dsh web` 并刷新页面。卸载：`dsh plugin --profile web remove @dsh-external/dsh-plugin-local-ai-tts`。不会卸载原版或删除其设置。真正 Harness 双插件运行仍待实机验收。
 
 ## 9. README
 

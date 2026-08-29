@@ -1,12 +1,26 @@
 {
   "name": "@dsh-external/dsh-plugin-local-ai-tts",
-  "description": "DeepSeek Harness Local AI TTS Plugin — starts configured IndexTTS 2.5 and GPT-SoVITS workers with sentence-level playback, plus upstream Edge TTS and RVC support",
+  "description": "Local IndexTTS 2.5 and GPT-SoVITS sentence-level speech synthesis and playback for DeepSeek Harness",
   "version": "0.1.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/abbccdd/dsh-localtts.git"
   },
   "homepage": "https://github.com/abbccdd/dsh-localtts",
+  "bugs": {
+    "url": "https://github.com/abbccdd/dsh-localtts/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "tts",
+    "text-to-speech",
+    "indextts",
+    "gpt-sovits",
+    "local-ai",
+    "voice"
+  ],
   "type": "module",
   "engines": {
     "node": ">=22"

@@ -1,6 +1,6 @@
 # DeepSeek Harness Local AI TTS Plugin
 
-[English](README.md) · **v0.1.4 发布候选版** · MIT
+[English](README.md) | 简体中文 · **v0.1.4 发布候选版** · MIT
 
 为 DeepSeek Harness 增加本地进程 TTS Provider。插件启动用户已安装的 **IndexTTS 2.5** 或 **GPT-SoVITS** worker，逐句合成并在浏览器播放，不需要打开 WebUI。合成、播放与 Harness 消息生成独立进行。
 
@@ -28,11 +28,13 @@ Harness assistant 回复 → SentenceBuffer → Local Process Provider
 
 **可以与原版同时安装和启用，不需要卸载原版。** 本插件使用独立的包名、路由、设置和界面标识；检测到原版后自动进入本地补充模式，详见下文。
 
+从 GitHub 安装当前源码：
+
 ```sh
-dsh plugin --profile web add "github:abbccdd/dsh-localtts#main"
+dsh plugin --profile web add github:abbccdd/dsh-localtts
 ```
 
-这是发布后的安装命令模板，**目前没有声称该远程版本已经发布**。现在可直接安装本地仓库，将示例路径换为自己的目录：
+本地开发时，也可以安装工作区目录：
 
 ```sh
 dsh plugin --profile web add "file:/path/to/dsh-plugin-local-ai-tts"
@@ -150,7 +152,7 @@ npm pack --dry-run
 
 需要验证已有 HTTP Runtime 时，可运行 `npm run smoke:runtime -- --engine indextts --endpoint http://127.0.0.1:8765 --voice default`，自行替换参数；这只是旧版兼容路径。内置 Local Engine Launcher 的真实 worker 验证请按 [验证记录与人工清单](docs/VALIDATION.md) 配置现有 Python/模型环境执行；两者都**不等于 Harness 页面实际播放验收**。
 
-发布前查看 [CHANGELOG](CHANGELOG.md)、[验证记录与人工清单](docs/VALIDATION.md)、[LICENSE](LICENSE)。npm 包使用文件白名单；`.gitignore` 和发布扫描排除模型、用户音色、参考录音、环境、凭据、音频产物。仍需人工审查最终 Git diff 与打包清单。本任务不会自动创建 GitHub 仓库、推送或发布 tag。
+发布前查看 [CHANGELOG](CHANGELOG.md)、[验证记录与人工清单](docs/VALIDATION.md)、[LICENSE](LICENSE)。npm 包使用文件白名单；`.gitignore` 和发布扫描排除模型、用户音色、参考录音、环境、凭据、音频产物。仍需人工审查最终 Git diff 与打包清单。GitHub 源码仓库已经可用；目前尚未声明 npm 包或稳定版 tag。
 
 ## 许可证
 
