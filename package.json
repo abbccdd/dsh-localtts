@@ -1,7 +1,7 @@
 {
   "name": "@dsh-external/dsh-plugin-local-ai-tts",
   "description": "Local IndexTTS 2.5 and GPT-SoVITS sentence-level speech synthesis and playback for DeepSeek Harness",
-  "version": "0.1.8",
+  "version": "0.1.10",
   "author": "abbccdd",
   "repository": {
     "type": "git",
@@ -42,20 +42,20 @@
     "client": {
       "platform": "web",
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-ui-slots"
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-settings-plugins"
       ]
     }
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-web": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6 || ^0.1.1-rc.0 || ^0.2.0-rc.2",
     "react": "^18.2.0"
   },
   "files": ["lib/", "assets/local-ai-tts-overview-zh.png", "assets/local-ai-tts-settings-zh.png", "screenshots.json", "cordis.patch.yml", "README.md", "README.zh-CN.md", "LICENSE", "NOTICE.md", "CHANGELOG.md", "docs/LOCAL-RUNTIME-PROTOCOL.md", "docs/PROCESS-WORKER-PROTOCOL.md", "docs/ENGINE-DISCOVERY.md", "docs/VALIDATION.md", "docs/COEXISTENCE.md", "adapters/python_http.py", "adapters/worker_common.py", "adapters/voice_cache.py", "adapters/official_launch.py", "adapters/gradio-worker.py", "adapters/index-tts-worker.py", "adapters/gpt-sovits-worker.py"],
   "scripts": {
     "build": "node tools/build-client.mjs",
-    "test": "node --test tests/local-runtime.test.mjs tests/process-provider.test.mjs tests/local-client.test.mjs tests/local-settings.test.mjs tests/discovery.test.mjs tests/coexistence.test.mjs && node tests/client-load.mjs && node tests/i18n-keys.mjs && node tools/build-client.mjs --check && node tools/release-check.mjs",
+    "test": "node --test tests/local-runtime.test.mjs tests/process-provider.test.mjs tests/local-client.test.mjs tests/local-settings.test.mjs tests/discovery.test.mjs tests/coexistence.test.mjs tests/host-compat.test.mjs && node tests/client-load.mjs && node tests/i18n-keys.mjs && node tools/build-client.mjs --check && node tools/release-check.mjs",
     "test:adapter": "python -m unittest discover -s tests -p test_*.py",
     "test:upstream-live": "node tests/smoke.mjs",
     "smoke:runtime": "node tools/smoke-runtime.mjs",

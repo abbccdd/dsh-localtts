@@ -7,6 +7,8 @@ import { pcmToWav } from '../lib/local-runtime/provider.mjs';
 
 const source = readFileSync(new URL('../src/local-client.js', import.meta.url), 'utf8');
 const coexistenceSource = readFileSync(new URL('../src/coexistence-client.js', import.meta.url), 'utf8');
+const clientBundle = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
+const pauseSource = clientBundle.slice(clientBundle.indexOf('function togglePause()'), clientBundle.indexOf('function cycleSpeed()'));
 function harness({ upstream = false } = {}) {
   const requests = [], audioNodes = [], errors = [], effects = [];
   const shared = { provider: 'local-runtime', autoRead: true, speakToken: 0, speaking: false, paused: false };
@@ -44,18 +46,36 @@ function harness({ upstream = false } = {}) {
       }
       return { ok: true, json: async () => data };
     } };
-  const bundle = new Function('deps', `with (deps) { ${coexistenceSource}; ${source}; const localRuntime = createLocalController(); return { controller: localRuntime, refreshCoexistence }; }`)(deps);
+  const bundle = new Function('deps', `with (deps) { ${coexistenceSource}; ${source}; ${pauseSource}; const localRuntime = createLocalController(); return { controller: localRuntime, refreshCoexistence, togglePause }; }`)(deps);
   controller = bundle.controller;
   shared.localRuntime.endpoint = 'http://localhost:9999';
   bundle.refreshCoexistence();
   effects.forEach(fn => fn()); controller.session('s1');
-  return { shared, service, controller, requests, audioNodes, errors, tick: () => tick(), stopSpeaking,
+  return { shared, service, controller, requests, audioNodes, errors, AudioContext, pause: bundle.togglePause, tick: () => tick(), stopSpeaking,
     upstreamAuto(value) { originalAutoRead = value; bundle.refreshCoexistence(); } };
 }
 const settle = async (h, predicate) => {
   for (let i = 0; i < 80; i++) { await delay(5); await h.tick(); if (predicate()) return; }
   assert.ok(predicate(), 'client did not settle');
 };
+test('pause while synthesis is pending keeps the first Web Audio buffer suspended', async t => {
+  const h = harness(); t.after(() => h.service.dispose());
+  // A real user gesture unlocks the shared context before any TTS buffer exists.
+  h.shared.audioCtx = new h.AudioContext();
+  h.shared.speaking = true; h.shared.speakSource = 'manual';
+  await h.controller.read('等待合成后再播放。');
+  assert.equal(h.shared.waCleanup, undefined);
+  h.pause();
+  assert.equal(h.shared.audioCtx.state, 'suspended');
+  await settle(h, () => h.audioNodes.length === 1);
+  assert.equal(h.shared.paused, true);
+  assert.equal(h.shared.audioCtx.state, 'suspended');
+  assert.equal([...h.service.clients.values()][0].jobs[0].audio.length, 1);
+  h.pause();
+  assert.equal(h.shared.audioCtx.state, 'running');
+  h.audioNodes[0].onended(); await h.tick();
+  assert.equal(h.shared.speaking, false);
+});
 test('browser controller pipelines three sentences and schedules consecutive Web Audio buffers', async t => {
   const h = harness(); t.after(() => h.service.dispose());
   h.shared.speaking = true; h.shared.speakSource = 'manual';

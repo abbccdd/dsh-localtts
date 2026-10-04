@@ -66,13 +66,13 @@ test('Host detects enable/disable, restores standalone routes and cleans subscri
   const entry = { options: { name: UPSTREAM_PACKAGE, disabled: true } };
   const h = host([entry]), ctx = h.context(); t.after(() => ctx.dispose());
   localApply(ctx); assert.ok(h.paths().includes('/dsh-local-ai-tts-api/speak'));
-  assert.equal(h.subscriptions.size, 2);
+  assert.equal(h.subscriptions.size, 3);
   entry.options.disabled = false; t.mock.timers.tick(1000);
   assert.deepEqual(h.paths(), ['/dsh-local-ai-tts-api/local-runtime']);
-  assert.equal(h.subscriptions.size, 1);
+  assert.equal(h.subscriptions.size, 2);
   entry.disabled = true; t.mock.timers.tick(1000);
   assert.ok(h.paths().includes('/dsh-local-ai-tts-api/speak'));
-  assert.equal(h.subscriptions.size, 2);
+  assert.equal(h.subscriptions.size, 3);
   ctx.dispose(); t.mock.timers.tick(1000); assert.equal(h.routes.size, 0); assert.equal(h.subscriptions.size, 0);
 });
 

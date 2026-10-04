@@ -1,6 +1,6 @@
 # DeepSeek Harness Local AI TTS Plugin
 
-English | [简体中文](README.zh-CN.md) · Version **0.1.8 release candidate** · MIT
+English | [简体中文](README.zh-CN.md) · Version **0.1.10 release candidate** · MIT
 
 Read DeepSeek Harness assistant replies with **IndexTTS 2.5** or **GPT-SoVITS** started by the plugin. The user supplies the existing Python/project/model configuration; the plugin starts a thin JSONL worker and sends one natural sentence per request. No WebUI page is required.
 
@@ -20,6 +20,8 @@ Harness assistant events → SentenceBuffer → local process provider
 
 ## Requirements and support
 
+Harness 0.1 (from `0.1.0-rc.6`, including `0.1.1-rc.2`) and 0.2 (from `0.2.0-rc.2`) share one plugin package. Compatibility uses public services and message selectors; 0.1 Session chunks and 0.2 Agent stream frames feed the same sentence player. The peer range retains an upper bound at the next minor family. Future breaking interfaces need validation before expanding it. See [validation boundaries](docs/VALIDATION.md).
+
 - DeepSeek Harness web profile with `webServer`, `session/event` and client UI slots. Node.js 22+ and a browser with Web Audio.
 - An existing IndexTTS 2.5 or GPT-SoVITS installation, its Python environment and model files.
 - A worker command implementing the [JSONL worker protocol](docs/PROCESS-WORKER-PROTOCOL.md). Thin examples are included in `adapters/`; they import/start the user's existing model project and do not contain weights.
@@ -30,11 +32,13 @@ The plugin discovers known paths only inside the selected local project/wrapper 
 
 **This plugin can be installed and enabled alongside the original.** Its package, routes, settings and UI identifiers are independent. Detection of the original automatically enables Local companion mode; see below.
 
-Install the current source from GitHub:
+Install the prebuilt **0.1.10** compatibility repair from GitHub (also use this command to replace an older installed version):
 
 ```sh
-dsh plugin --profile web add github:abbccdd/dsh-localtts
+dsh plugin --profile web add https://github.com/abbccdd/dsh-localtts/releases/download/v0.1.10/dsh-external-dsh-plugin-local-ai-tts-0.1.10.tgz
 ```
+
+For the exact same tagged source, use `dsh plugin --profile web add github:abbccdd/dsh-localtts#v0.1.10`. Version 0.1.8 is incompatible with Harness 0.2; upgrading Harness alone does not update an already installed plugin.
 
 For local development, install a checkout instead:
 
@@ -45,7 +49,7 @@ dsh web
 
 Restart `dsh web` and refresh its browser page after installation. On Windows a `file:` installation may be a copy; reinstall the local package after changing it. Do not edit Harness core files.
 
-The community DSH Market listing uses this repository as its source. A prebuilt release tarball is preferred when available, so installation does not run a repository build script.
+The community DSH Market catalog is maintained separately from this repository. If it still offers 0.1.8, use the version-pinned command above. The prebuilt archive includes the client bundle and needs no repository build script.
 
 ## Coexistence with the original plugin
 
@@ -146,7 +150,7 @@ Mock tests use Node built-ins and Python stdlib: no npm install, GPU, model down
 
 For an already running real service: `npm run smoke:runtime -- --engine indextts --endpoint http://127.0.0.1:8765 --voice default` (replace values). This checks health plus exactly three HTTP syntheses and writes no audio files. It is **not** a substitute for the real Harness/browser acceptance in [VALIDATION](docs/VALIDATION.md).
 
-Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), and [LICENSE](LICENSE) before tagging `v0.1.8`. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. The GitHub source repository is available; no npm package or stable release tag is claimed yet.
+Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), and [LICENSE](LICENSE) before tagging `v0.1.10`. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. The GitHub source repository is available; no npm package or stable release tag is claimed yet.
 
 ## License
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.10 — 2026-10-05
+
+- Keep Local AI TTS paused when the user pauses while synthesis is still pending. Select the Web Audio control path by provider, before the first decoded buffer exists.
+- Add a regression for pausing before the first buffer, retaining unacknowledged audio, resuming and completing playback.
+- Validate the package in actual official Harness `0.2.0-rc.2` Web UI with real IndexTTS synthesis; exercise streaming Auto Read and message controls using a local simulated LLM.
+
+## 0.1.9 — 2026-10-05
+
+- Declare the actual Host web-server contract for Harness 0.1 and 0.2, including `0.2.0-rc.2`; remove the unrelated search/fetch `dsh-web` peer.
+- Load through public Conversation and Plugins Settings modules instead of the removed `dsh-client-runtime` package. Export `inject: ['slots']` so client activation waits for its required service.
+- Read assistant text through the old Session selector or the new public Chat selector, and keep the same settings, controls and synthesis pipeline.
+- Consume Harness 0.2 `agent/assistant-stream` frames alongside the 0.1 Session event feed. Keep transient revisions separate from durable sequence numbers, ignore duplicate/ended frames, and avoid replaying finalized messages.
+- Cover both message selectors, streaming/final settlement, failed attempts, Agent replacement, session isolation and manual/automatic reading ownership with regression tests.
+
 ## 0.1.8 — 2026-08-29
 
 - Shorten only an unusually long opening segment of manual/history reads so the first audio can play while later text is synthesized.

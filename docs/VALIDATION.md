@@ -1,4 +1,29 @@
-# Validation and release gate — 0.1.8
+# Validation and release gate — 0.1.10
+
+## Real Harness compatibility acceptance — 2026-10-05
+
+The final 0.1.10 package was installed in the existing official Harness **0.1.1-rc.2** web profile and a separate complete official **0.2.0-rc.2** web profile. The older running installation was checked directly; it was not assumed to be 0.2. No Harness core files or model weights were changed.
+
+- Both real hosts loaded the plugin and displayed its settings, message actions and automatic reading controls. IndexTTS used an existing installation with `examples/voice_01.wav` as the reference.
+- A real 0.1 preview returned a valid 114220-byte WAV. On 0.2, two separate sentences produced successful real synthesis requests and sequential browser playback. A captured response was mono 22050 Hz / 16-bit WAV, 138796 bytes, 3.146 seconds, with nonzero samples.
+- The complete 0.2 Agent used a local OpenAI-compatible fixture for answer generation. Its real start/chunk/end frames and durable final message triggered one real IndexTTS synthesis for a short reply, without replaying the final message. Only the answer source was a fixture; the host, TTS model and browser were real.
+- Manual message reading, pause before the first buffer arrived, resume and stop were exercised in the actual 0.2 browser. The pending-buffer pause defect discovered during this run is fixed in 0.1.10 and has a regression test.
+- Final local automated checks: **82 Node tests, 57 client load/render checks, 6 bilingual checks and 14 Python adapter tests** passed on Windows / Node 24.13.1.
+
+This verifies the loading/interface repair and IndexTTS path on those two host versions. It does not establish physical speaker listening quality, uninterrupted playback when synthesis is slower than real time, a real GPT-SoVITS model run, or every original-plugin coexistence scenario. GPT-SoVITS remains covered by adapter fixtures, so this release retains candidate status. Historical preparation notes below describe the evidence available at their dates; they are superseded by this section where applicable.
+
+## Initial 0.1.9 compatibility checks — 2026-10-05 (before real-host acceptance)
+
+The original `dsh-web: ^0.1.0-rc.6` peer is rejected by Harness 0.2's `evaluatePluginCompatibility`: it checks all `@deepseek-ai/dsh-*` peers against the running DSH version with `includePrerelease: true`, and denied bundles/entries are omitted before activation. Enabling a denied entry cannot make it load. The plugin actually consumes `webServer`, not the search/fetch `dsh-web` capability.
+
+The 0.2 package split also removed `dsh-client-runtime`, moved messages to the public Chat selector, and moved transient chunks out of the durable Session log into `agent/assistant-stream`. Version 0.1.9 corrects the runtime declaration and adapts these public interfaces while retaining the 0.1 interfaces.
+
+- Node regression suite: 81 tests; client load/render: 57 checks; bilingual keys: 6 checks; Python adapters: 14 tests passed on Windows / Node 24.13.1. No real model was started for this repair.
+- The unmodified compatibility evaluator extracted from the official `dsh-app-boot@0.2.0-rc.2` package rejects the old manifest and accepts the new manifest for `0.1.0-rc.6`, `0.1.1-rc.2`, `0.2.0-rc.2`, and `0.2.0`. It continues to reject below-minimum and future `0.3.0-rc.1` versions. This is a gate check, not execution on every listed host.
+- The official 0.2 SlotRegistry and SlotCore with Cordis 4.0.4 registered the plugin's overlay, input toggle, assistant actions and settings tab, then removed them on plugin disposal. React was supplied by the existing installation and the DOM was a lightweight fixture; actual visual/audio acceptance is still pending.
+- New tests cover legacy/new message selectors, start/chunk/end framing, independent transient revisions and durable seq, duplicate/end-frame suppression, final-message deduplication, retry residual cleanup, Agent replacement, session separation and manual read priority.
+
+These initial fixture checks preceded the real-host acceptance recorded above and do not alone prove browser playback or compatibility with arbitrary future versions.
 
 ## Automated coverage
 
@@ -26,7 +51,7 @@ The static UI fixture was opened in a real browser and inspected after this chan
 
 Read-only discovery was also run against the existing local IndexTTS wrapper on 2026-08-28. It resolved `app`, its `.venv` Python, `checkpoints` and 14 audio candidates, including example voices and a nested preset reference. It deliberately did not auto-select a voice among multiple candidates. This check did not launch Python, read audio/weights or establish GPT-SoVITS availability. GPT integrated-package discovery was tested with filesystem fixtures only.
 
-## Real local acceptance — PARTIALLY COMPLETE
+## Historical model preparation — 2026-08-28, PARTIALLY COMPLETE
 
 During preparation, installed Harness event types and both existing Python Runtime method signatures were inspected read-only. The existing GPT-SoVITS HTTP bridge contract was inspected read-only. No Runtime implementation or inference parameter was changed.
 
@@ -55,9 +80,9 @@ All responses had a valid RIFF/WAVE header. Total synthesis time was about 56 se
 | Required acceptance | Result |
 | --- | --- |
 | Direct IndexTTS worker: three requests and valid audio | **Passed 2026-08-28 on CPU**; see the smoke record above |
-| Real Harness answer → IndexTTS: three requests and continuous browser speech | Pending: running Harness + configured IndexTTS worker required |
+| Real Harness answer → IndexTTS | Passed 2026-10-05 on 0.2 with fixture answer generation and real synthesis; two-sentence manual playback also passed. Three-sentence continuous listening quality remains unverified. |
 | Real Harness answer → GPT-SoVITS: three requests and continuous browser speech | Pending: running Harness + configured GPT-SoVITS worker required |
-| Real browser audible quality / pause / resume / stop | Pending on target Harness instance |
+| Real browser pause / resume / stop | Passed 2026-10-05 on official 0.2; physical speaker listening quality remains unverified. |
 | Both plugins enabled in actual Harness; original Edge/RVC preserved and local Auto Read ownership verified | Pending; both load orders tested only with captured original bundles and mocked Harness/browser APIs |
 | Node 22/24 GitHub Actions matrix | Workflow prepared; remote CI has not been run here |
 
@@ -78,8 +103,8 @@ Record date, Harness version, engine/bridge version, browser, protocol, request 
 
 ## Before publishing
 
-- [ ] Complete both real end-to-end rows above and inspect the actual UI in the target Harness version.
-- [x] Confirm repository owner/name: `abbccdd/dsh-localtts`; the source install example uses the `main` branch until a release tag is created.
+- [ ] Complete GPT-SoVITS real-model acceptance and continuous listening checks before claiming full engine acceptance. IndexTTS and the actual 0.2 UI were checked for this candidate.
+- [x] Confirm repository owner/name: `abbccdd/dsh-localtts`; installation is pinned to `v0.1.10` or its prebuilt archive.
 - [ ] Confirm the existing Runtime HTTP contracts and its operator's model/voice usage rights.
 - [ ] Inspect `git diff`, `git status`, and `npm pack --dry-run`; verify no private files were force-added.
 - [ ] Review upstream inherited Edge/RVC security assumptions. Do not expose their trusted-local management routes to untrusted users.

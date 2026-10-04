@@ -1,6 +1,6 @@
 # DeepSeek Harness Local AI TTS Plugin
 
-[English](README.md) | 简体中文 · **v0.1.8 发布候选版** · MIT
+[English](README.md) | 简体中文 · **v0.1.10 发布候选版** · MIT
 
 为 DeepSeek Harness 增加本地进程 TTS Provider。插件启动用户已安装的 **IndexTTS 2.5** 或 **GPT-SoVITS** worker，逐句合成并在浏览器播放，不需要打开 WebUI。合成、播放与 Harness 消息生成独立进行。
 
@@ -20,21 +20,25 @@ Harness assistant 回复 → SentenceBuffer → Local Process Provider
 
 ## 支持范围与要求
 
+同一个插件包适配 Harness 0.1（从 `0.1.0-rc.6` 起，包括 `0.1.1-rc.2`）和 0.2（从 `0.2.0-rc.2` 起）。通过公共服务和消息选择器连接宿主，旧版 Session 文本事件和新版 Agent 流式帧共用逐句播放器。兼容声明保留下一次 minor 版本变更的上限；未来接口若有破坏性变化，需要验证后再扩展。具体测试边界见[验证记录](docs/VALIDATION.md)。
+
 - DeepSeek Harness web profile，提供 `webServer`、`session/event` 和客户端 UI slots；Node.js 22+，浏览器支持 Web Audio。
 - 已安装的 IndexTTS 2.5 或 GPT-SoVITS、对应 Python 环境和模型文件。
 - Worker 需实现 [JSONL worker 协议](docs/PROCESS-WORKER-PROTOCOL.md)。`adapters/` 中提供两个只负责连接的示例，不包含权重。
 
-并非任意原版 WebUI 或 `/tts` API 都能直接连接。协议必须匹配，[接口说明](docs/LOCAL-RUNTIME-PROTOCOL.md)包含准确请求/响应格式。两个引擎的 mock 测试已通过；真实 Harness + 两套 Runtime 的播放验收仍是发布门槛，见 [验证记录](docs/VALIDATION.md)。
+并非任意原版 WebUI 或 `/tts` API 都能直接连接。协议必须匹配，[接口说明](docs/LOCAL-RUNTIME-PROTOCOL.md)包含准确请求/响应格式。两个引擎的 mock 测试已通过；本轮已验证真实 Harness 0.1/0.2 + IndexTTS 合成和浏览器播放控制，GPT-SoVITS 的真实模型播放仍待验证，见 [验证记录](docs/VALIDATION.md)。
 
 ## 安装
 
 **可以与原版同时安装和启用，不需要卸载原版。** 本插件使用独立的包名、路由、设置和界面标识；检测到原版后自动进入本地补充模式，详见下文。
 
-从 GitHub 安装当前源码：
+从 GitHub 安装 **0.1.10** 预构建修复包（已装旧版时，也用此命令替换）：
 
 ```sh
-dsh plugin --profile web add github:abbccdd/dsh-localtts
+dsh plugin --profile web add https://github.com/abbccdd/dsh-localtts/releases/download/v0.1.10/dsh-external-dsh-plugin-local-ai-tts-0.1.10.tgz
 ```
+
+安装同一版本的源码可用 `dsh plugin --profile web add github:abbccdd/dsh-localtts#v0.1.10`。0.1.8 不兼容 Harness 0.2；只升级 Harness 不会更新已安装的插件。
 
 本地开发时，也可以安装工作区目录：
 
@@ -45,7 +49,7 @@ dsh web
 
 重启 `dsh web` 并刷新浏览器。在 Windows 上，`file:` 安装可能复制文件；修改源码后需要重新安装该本地包。不要修改 Harness 核心。
 
-社区 DSH 插件市场以本仓库作为安装来源；有预构建 Release 包时会优先使用，安装过程无需执行仓库构建脚本。
+社区 DSH 插件市场目录由其他仓库维护；若仍提供 0.1.8，请使用上面的固定版本命令。预构建包已包含客户端文件，安装过程无需执行仓库构建脚本。
 
 ## 配置本地进程（IndexTTS 2.5 / GPT-SoVITS）
 
