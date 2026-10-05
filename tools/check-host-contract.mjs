@@ -1,11 +1,12 @@
 // Run against a complete, independently installed official DSH package.
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const anchor = path.resolve(process.argv[2]);
+// pnpm exposes the host through a symlink; dependencies belong to its real path.
+const anchor = realpathSync(path.resolve(process.argv[2]));
 const hostRequire = createRequire(anchor);
 const host = JSON.parse(readFileSync(anchor, 'utf8'));
 const plugin = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
