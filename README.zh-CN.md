@@ -1,6 +1,6 @@
 # DeepSeek Harness Local AI TTS Plugin
 
-[English](README.md) | 简体中文 · **v0.1.10 发布候选版** · MIT
+[English](README.md) | 简体中文 · **v0.1.11 发布候选版** · MIT
 
 为 DeepSeek Harness 增加本地进程 TTS Provider。插件启动用户已安装的 **IndexTTS 2.5** 或 **GPT-SoVITS** worker，逐句合成并在浏览器播放，不需要打开 WebUI。合成、播放与 Harness 消息生成独立进行。
 
@@ -32,13 +32,13 @@ Harness assistant 回复 → SentenceBuffer → Local Process Provider
 
 **可以与原版同时安装和启用，不需要卸载原版。** 本插件使用独立的包名、路由、设置和界面标识；检测到原版后自动进入本地补充模式，详见下文。
 
-从 GitHub 安装 **0.1.10** 预构建修复包（已装旧版时，也用此命令替换）：
+从 GitHub 安装当前源码（已装旧版时也用此命令替换，并启用市场更新检测）：
 
 ```sh
-dsh plugin --profile web add https://github.com/abbccdd/dsh-localtts/releases/download/v0.1.10/dsh-external-dsh-plugin-local-ai-tts-0.1.10.tgz
+dsh plugin --profile web add github:abbccdd/dsh-localtts
 ```
 
-安装同一版本的源码可用 `dsh plugin --profile web add github:abbccdd/dsh-localtts#v0.1.10`。0.1.8 不兼容 Harness 0.2；只升级 Harness 不会更新已安装的插件。
+源码已包含编译后的客户端文件，无需运行构建脚本。需要固定安装包时可下载 [v0.1.11 发布附件](https://github.com/abbccdd/dsh-localtts/releases/tag/v0.1.11)。0.1.8 不兼容 Harness 0.2；只升级 Harness 不会更新已安装的插件。
 
 本地开发时，也可以安装工作区目录：
 
@@ -49,7 +49,15 @@ dsh web
 
 重启 `dsh web` 并刷新浏览器。在 Windows 上，`file:` 安装可能复制文件；修改源码后需要重新安装该本地包。不要修改 Harness 核心。
 
-社区 DSH 插件市场目录由其他仓库维护；若仍提供 0.1.8，请使用上面的固定版本命令。预构建包已包含客户端文件，安装过程无需执行仓库构建脚本。
+社区 DSH 插件市场目录由其他仓库维护；若仍提供 0.1.8，请使用上面的命令。
+
+### 更新机制与兼容性
+
+打开设置时，插件每天最多自动检查一次本仓库已发布完整安装包的 GitHub 版本，并标明候选版；也可手动点击 **检查更新**，或关闭自动检查。检查不向 GitHub 发送登录凭据或对话内容。离线或 API 限流会显示原因，可手动重试。
+
+点击 **更新安装** 并确认后，由已安装的 DSH 插件市场执行更新，保留市场的运行中 Agent 检查、宿主兼容检查和回滚。安装后需要重启 Harness 并刷新页面，正在运行的旧模块不会假装已切换版本。市场收录后，本地 `file:` 安装可恢复到线上来源。没有市场、使用固定 Release 地址或目录尚未收录时，请执行面板中的 GitHub 安装命令；自定义 profile 请替换 `web`。插件不会独立覆盖自身文件，也不会自动绕过兼容限制。
+
+如果宿主在加载前拒绝插件，插件自己的更新面板也无法运行，此时需要独立市场或 CLI 更新。消息接口按实际提供的 Chat/Session 能力选择，不支持的结构会明确提示；缺少流式帧时仍可通过最终消息朗读，但开始时间会延后到回复完成。每次推送的 CI 会检查官方 0.1.1-rc.2、0.2.0-rc.2 和持续变化的 `alpha` 通道宿主包。检查能发现接口变化，无法自动适配任意未来 API，也不替代真实模型与浏览器验收；0.3 的兼容上限仍保留。
 
 ## 配置本地进程（IndexTTS 2.5 / GPT-SoVITS）
 

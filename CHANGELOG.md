@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.11 — 2026-10-05
+
+- Add daily, opt-out GitHub release checks, candidate labels, manual refresh and a confirmed market update/restore action. Offline, unsupported source and failed update states are visible; successful replacement requires restart.
+- Keep package replacement in the independent DSH Market, preserving its activity guard, host compatibility checks and rollback. Provide a CLI source migration command for pinned archives, unavailable markets and pending catalog entries.
+- Detect public Chat and Session message projections by capability and show an unsupported-interface warning instead of crashing the controls. Verify durable reply reading when transient frames are absent.
+- Add official-host contract CI for 0.1.1-rc.2, 0.2.0-rc.2 and the current alpha channel. Keep the future 0.3 version boundary closed.
+
 ## 0.1.10 — 2026-10-05
 
 - Keep Local AI TTS paused when the user pauses while synthesis is still pending. Select the Web Audio control path by provider, before the first decoded buffer exists.

@@ -1,4 +1,14 @@
-# Validation and release gate — 0.1.10
+# Validation and release gate — 0.1.11
+
+## Update and compatibility coverage — 2026-10-05
+
+The update controller is checked for complete release selection, draft/foreign archive rejection, numeric version ordering, daily cache persistence, concurrent requests, declined confirmation, duplicate installation gestures, local restore, pinned-source migration, offline/missing market responses, and failed/stale/blocked installation results. It uses the independent market's existing HTTP contract and never launches a package manager itself. Successful updates preserve the loaded version until a restart.
+
+Official host-package checks verify the declared web service and client entry packages, and, when provided by the host, its unmodified compatibility evaluator. Modern host types must retain the public assistant stream contract. The CI matrix uses 0.1.1-rc.2, 0.2.0-rc.2 and the moving alpha channel; this is contract validation, not complete GPU/browser acceptance on every alpha build.
+
+The historical real-model/browser evidence below remains applicable to the unchanged synthesis path. New update behavior does not establish real GPT-SoVITS model availability, physical listening quality or compatibility with 0.3.
+
+Local 0.1.11 validation passed 91 Node tests, 57 client-load checks, 6 bilingual checks and 14 Python adapter tests. The contract tool passed against the complete official 0.1.1-rc.2, 0.2.0-rc.2 and 0.2.1-alpha.1 installations. The update settings panel loaded in the real 0.2.0-rc.2 browser; a release check returned the public candidate metadata and kept installation disabled when no higher published version was available.
 
 ## Real Harness compatibility acceptance — 2026-10-05
 

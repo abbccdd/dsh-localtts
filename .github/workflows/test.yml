@@ -6,6 +6,21 @@ on:
   pull_request:
 
 jobs:
+  host-contract:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        host: ['0.1.1-rc.2', '0.2.0-rc.2', 'alpha']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install an independent official host without launching it
+        run: npm install --ignore-scripts --prefix "$RUNNER_TEMP/host-contract" "@deepseek-ai/dsh@${{ matrix.host }}"
+      - name: Check actual host compatibility and public contracts
+        run: node tools/check-host-contract.mjs "$RUNNER_TEMP/host-contract/node_modules/@deepseek-ai/dsh/package.json"
   test:
     runs-on: ubuntu-latest
     strategy:

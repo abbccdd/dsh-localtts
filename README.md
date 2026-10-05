@@ -1,6 +1,6 @@
 # DeepSeek Harness Local AI TTS Plugin
 
-English | [简体中文](README.zh-CN.md) · Version **0.1.10 release candidate** · MIT
+English | [简体中文](README.zh-CN.md) · Version **0.1.11 release candidate** · MIT
 
 Read DeepSeek Harness assistant replies with **IndexTTS 2.5** or **GPT-SoVITS** started by the plugin. The user supplies the existing Python/project/model configuration; the plugin starts a thin JSONL worker and sends one natural sentence per request. No WebUI page is required.
 
@@ -32,13 +32,13 @@ The plugin discovers known paths only inside the selected local project/wrapper 
 
 **This plugin can be installed and enabled alongside the original.** Its package, routes, settings and UI identifiers are independent. Detection of the original automatically enables Local companion mode; see below.
 
-Install the prebuilt **0.1.10** compatibility repair from GitHub (also use this command to replace an older installed version):
+Install the current GitHub source (also replaces an older installation and enables market update checks):
 
 ```sh
-dsh plugin --profile web add https://github.com/abbccdd/dsh-localtts/releases/download/v0.1.10/dsh-external-dsh-plugin-local-ai-tts-0.1.10.tgz
+dsh plugin --profile web add github:abbccdd/dsh-localtts
 ```
 
-For the exact same tagged source, use `dsh plugin --profile web add github:abbccdd/dsh-localtts#v0.1.10`. Version 0.1.8 is incompatible with Harness 0.2; upgrading Harness alone does not update an already installed plugin.
+The client bundle is committed, so this source needs no build script. For a reproducible archive use the [v0.1.11 release](https://github.com/abbccdd/dsh-localtts/releases/tag/v0.1.11). Version 0.1.8 is incompatible with Harness 0.2; upgrading Harness alone does not update an already installed plugin.
 
 For local development, install a checkout instead:
 
@@ -49,7 +49,15 @@ dsh web
 
 Restart `dsh web` and refresh its browser page after installation. On Windows a `file:` installation may be a copy; reinstall the local package after changing it. Do not edit Harness core files.
 
-The community DSH Market catalog is maintained separately from this repository. If it still offers 0.1.8, use the version-pinned command above. The prebuilt archive includes the client bundle and needs no repository build script.
+The community DSH Market catalog is maintained separately from this repository. If it still offers 0.1.8, use the command above.
+
+### Updates and compatibility
+
+The settings page checks this repository's completed GitHub releases at most once per day when opened. It labels release candidates and supports a manual refresh. Checks send no credentials or conversation text to GitHub; offline/rate-limit errors remain visible and can be retried. Automatic checking can be disabled.
+
+**Install update** requires confirmation and delegates to the installed DSH Market's update/restore operation. The market retains its running-agent guard, host compatibility validation and rollback. Restart Harness and refresh after installation; the loaded module does not pretend to change before restart. Local `file:` installations can restore to the catalog source after this repository is listed. Without the market, with a fixed release URL, or before catalog publication, use the displayed GitHub installation command (replace `web` for a custom profile). The plugin never independently replaces its own files or grants compatibility exemptions.
+
+If a host rejects the plugin before activation, its own update panel cannot run; use the independent market or CLI. Known Chat/Session message projections are detected by capability, with an explicit warning for unsupported shapes. Durable final-message reading remains available when transient frames are absent, although speech then starts after the reply completes. CI checks actual official 0.1.1-rc.2 / 0.2.0-rc.2 host packages and the moving `alpha` channel on each push. These checks detect contract changes; they cannot automatically adapt an arbitrary future API or replace real model/browser acceptance. The 0.3 boundary remains closed.
 
 ## Coexistence with the original plugin
 
@@ -150,7 +158,7 @@ Mock tests use Node built-ins and Python stdlib: no npm install, GPU, model down
 
 For an already running real service: `npm run smoke:runtime -- --engine indextts --endpoint http://127.0.0.1:8765 --voice default` (replace values). This checks health plus exactly three HTTP syntheses and writes no audio files. It is **not** a substitute for the real Harness/browser acceptance in [VALIDATION](docs/VALIDATION.md).
 
-Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), and [LICENSE](LICENSE) before tagging `v0.1.10`. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. The GitHub source repository is available; no npm package or stable release tag is claimed yet.
+Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), and [LICENSE](LICENSE) before tagging `v0.1.11`. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. The GitHub source repository is available; no npm package or stable release tag is claimed yet.
 
 ## License
 

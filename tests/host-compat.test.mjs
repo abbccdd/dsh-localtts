@@ -25,6 +25,11 @@ test('client declares the slots service and does not silently apply without it',
   assert.throws(() => exports.apply({ get() {}, effect() {} }));
 });
 
+test('a missing Chat legacy projection uses a public nodes snapshot or reports an unsupported capability', () => {
+  assert.equal(selector({ useChat: fn => fn({ nodes: messages }) }), messages);
+  assert.equal(selector({ useChat: fn => fn({ newerMessageStore: {} }) }).length, 0);
+});
+
 function runtime(t) {
   const requests = [];
   const service = new LocalRuntimeService({ providerFactory: () => ({
@@ -43,6 +48,14 @@ function runtime(t) {
   };
   return { service, c, agent, frame, durable, requests, settle };
 }
+
+test('durable final messages remain readable when transient streaming is unavailable', async t => {
+  const h = runtime(t);
+  h.durable(1, 'assistant/message', { turn: 1, step: 1, message: { content: [{ type: 'text', text: '第一句。第二句。' }] } });
+  h.durable(2, 'turn/end', { turn: 1 });
+  await h.settle(2);
+  assert.deepEqual(h.requests, ['第一句。', '第二句。']);
+});
 
 test('0.2 streaming starts before settlement, ignores repeated frames and never replays final text', async t => {
   const h = runtime(t);
