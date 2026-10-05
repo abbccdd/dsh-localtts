@@ -18,10 +18,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.24.0
       - name: Install an independent official host without launching it
-        # Inspect the host's declared dependency graph, without automatically
-        # adding peers from other host generations. The public gate runs below.
-        run: npm install --ignore-scripts --legacy-peer-deps --prefix "$RUNNER_TEMP/host-contract" "@deepseek-ai/dsh@${{ matrix.host }}"
+        # Use the same package manager as the host's plugin manager. Required
+        # peers are installed; the public gate and generation checks run below.
+        run: |
+          mkdir -p "$RUNNER_TEMP/host-contract"
+          pnpm add --ignore-scripts --dir "$RUNNER_TEMP/host-contract" "@deepseek-ai/dsh@${{ matrix.host }}"
       - name: Check actual host compatibility and public contracts
         run: node tools/check-host-contract.mjs "$RUNNER_TEMP/host-contract/node_modules/@deepseek-ai/dsh/package.json"
   test:
