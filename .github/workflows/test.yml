@@ -8,6 +8,7 @@ on:
 jobs:
   host-contract:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -18,7 +19,9 @@ jobs:
         with:
           node-version: 24
       - name: Install an independent official host without launching it
-        run: npm install --ignore-scripts --prefix "$RUNNER_TEMP/host-contract" "@deepseek-ai/dsh@${{ matrix.host }}"
+        # Inspect the host's declared dependency graph, without automatically
+        # adding peers from other host generations. The public gate runs below.
+        run: npm install --ignore-scripts --legacy-peer-deps --prefix "$RUNNER_TEMP/host-contract" "@deepseek-ai/dsh@${{ matrix.host }}"
       - name: Check actual host compatibility and public contracts
         run: node tools/check-host-contract.mjs "$RUNNER_TEMP/host-contract/node_modules/@deepseek-ai/dsh/package.json"
   test:
