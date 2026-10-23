@@ -1,14 +1,14 @@
 # DeepSeek Harness Local AI TTS Plugin
 
-English | [简体中文](README.zh-CN.md) · Version **0.1.11 release candidate** · MIT
+English | [简体中文](README.zh-CN.md) · Version **0.1.12-rc.5 release candidate** · MIT
 
-Read DeepSeek Harness assistant replies with **IndexTTS 2.5** or **GPT-SoVITS** started by the plugin. The user supplies the existing Python/project/model configuration; the plugin starts a thin JSONL worker and sends one natural sentence per request. No WebUI page is required.
+Read DeepSeek Harness assistant replies through a compatible local **HTTP API or JSONL worker**, with built-in launchers for **IndexTTS 2.5** and **GPT-SoVITS**. The user supplies the local service or existing Python/project/model configuration; the plugin sends one natural sentence per request and plays the returned audio.
 
 ![Local AI TTS settings in Simplified Chinese](assets/local-ai-tts-overview-zh.png)
 
 Based on [1624318455/dsh-plugin-tts](https://github.com/1624318455/dsh-plugin-tts), commit `ec0cf87ef52abb81ae91681a966aa3096365e631`. Its message buttons, Auto Read toggle, Edge/RVC providers, pause/stop controls, settings and Harness API integration are reused. See [NOTICE](NOTICE.md).
 
-**This is a connector and process launcher, not a model distribution.** It does not install, trim, retrain or modify TTS models. It only starts the executable and worker command that you configure. No checkpoints, reference recordings, voice caches, Python environments or generated audio are included.
+**This is a connector and process launcher, not a model distribution.** It does not install, trim, retrain or modify TTS models. It uses an existing environment for bundled SDK loading recipes or a worker command that you configure. No checkpoints, reference recordings, voice caches, Python environments or generated audio are included.
 
 ```text
 Harness assistant events → SentenceBuffer → local process provider
@@ -18,13 +18,27 @@ Harness assistant events → SentenceBuffer → local process provider
                                         Browser Web Audio
 ```
 
+## Model folders and bilingual settings
+
+Select **Local model folder (auto detect)**, choose a folder, recognize the model, select a voice, load, then try reading. Known layouts cover Kokoro 82M, Qwen3 CustomVoice, F5 v1 Base, VoxCPM and CosyVoice 3. One packaged JSONL worker calls existing SDKs directly; no HTTP gateway is required. Cloning models require reference audio and a matching transcript, which can be saved as a reusable voice preset. Environment overrides are collapsed. Unload releases the browser's model lease. See the [folder guide](docs/MODEL-FOLDERS.zh-CN.md).
+
+Universal protocols and the existing IndexTTS / GPT-SoVITS entries remain available. Recognition does not install dependencies or infer arbitrary unknown weight architectures.
+
+All five folder recipes passed direct SDK synthesis and formal DSH load, trial, pause, resume, stop and unload checks on the local test machine, without an HTTP gateway. See the scope recorded in the folder guide.
+
+## Universal local TTS (release candidate)
+
+Select **Universal local TTS (HTTP / worker)** for OpenAI-compatible speech, configurable JSON, URL-encoded forms, multipart reference-audio uploads, or custom JSONL workers. Models and transport protocols are independent; presets use the same provider. OpenAI-compatible describes the local API format; it does not require an OpenAI account or cloud service.
+
+Native Piper and GPT-SoVITS HTTP synthesis were verified. Kokoro, F5-TTS, VoxCPM1.5, Qwen3-TTS 0.6B and CosyVoice3 were verified through a developer-local SDK gateway and the formal DSH settings/player. These tests do not certify every engine's native API/WebUI. The gateway, model environments and recordings are not included. See the [configuration guide](docs/UNIVERSAL-TTS.zh-CN.md) and [model test boundaries](docs/CANDIDATE-VALIDATION.zh-CN.md).
+
 ## Requirements and support
 
 Harness 0.1 (from `0.1.0-rc.6`, including `0.1.1-rc.2`) and 0.2 (from `0.2.0-rc.2`) share one plugin package. Compatibility uses public services and message selectors; 0.1 Session chunks and 0.2 Agent stream frames feed the same sentence player. The peer range retains an upper bound at the next minor family. Future breaking interfaces need validation before expanding it. See [validation boundaries](docs/VALIDATION.md).
 
 - DeepSeek Harness web profile with `webServer`, `session/event` and client UI slots. Node.js 22+ and a browser with Web Audio.
-- An existing IndexTTS 2.5 or GPT-SoVITS installation, its Python environment and model files.
-- A worker command implementing the [JSONL worker protocol](docs/PROCESS-WORKER-PROTOCOL.md). Thin examples are included in `adapters/`; they import/start the user's existing model project and do not contain weights.
+- A compatible local HTTP service, or an existing model installation with a worker implementing the [JSONL worker protocol](docs/PROCESS-WORKER-PROTOCOL.md).
+- The built-in IndexTTS / GPT-SoVITS launchers need the existing Python environment, project and model files. Thin examples in `adapters/` contain no weights.
 
 The plugin discovers known paths only inside the selected local project/wrapper folder. It does not scan whole disks, install dependencies or open WebUI pages. Detected and manually configured paths are kept in browser settings. IndexTTS and GPT-SoVITS retain separate project/model/voice profiles, so switching back restores that engine's previous paths without copying them into the other engine.
 
@@ -38,7 +52,7 @@ Install the current GitHub source (also replaces an older installation and enabl
 dsh plugin --profile web add github:abbccdd/dsh-localtts
 ```
 
-The client bundle is committed, so this source needs no build script. For a reproducible archive use the [v0.1.11 release](https://github.com/abbccdd/dsh-localtts/releases/tag/v0.1.11). Version 0.1.8 is incompatible with Harness 0.2; upgrading Harness alone does not update an already installed plugin.
+The client bundle is committed, so this source needs no build script. The [previous v0.1.11 archive](https://github.com/abbccdd/dsh-localtts/releases/tag/v0.1.11) does not contain the new universal entry. For this release candidate use its matching archive when published, or install a local checkout. Version 0.1.8 is incompatible with Harness 0.2; upgrading Harness alone does not update an already installed plugin.
 
 For local development, install a checkout instead:
 
@@ -158,7 +172,7 @@ Mock tests use Node built-ins and Python stdlib: no npm install, GPU, model down
 
 For an already running real service: `npm run smoke:runtime -- --engine indextts --endpoint http://127.0.0.1:8765 --voice default` (replace values). This checks health plus exactly three HTTP syntheses and writes no audio files. It is **not** a substitute for the real Harness/browser acceptance in [VALIDATION](docs/VALIDATION.md).
 
-Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), and [LICENSE](LICENSE) before tagging `v0.1.11`. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. The GitHub source repository is available; no npm package or stable release tag is claimed yet.
+Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), [model validation](docs/CANDIDATE-VALIDATION.zh-CN.md), and [LICENSE](LICENSE) before tagging `v0.1.12-rc.1`. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. This checkout does not imply that its candidate archive, GitHub tag or npm package has been published.
 
 ## License
 

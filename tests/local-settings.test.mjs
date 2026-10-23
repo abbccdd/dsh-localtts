@@ -4,11 +4,11 @@ import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../src/local-client.js', import.meta.url), 'utf8');
 const flush = () => new Promise(resolve => setImmediate(resolve));
-function harness() {
+function harness(locale = 'en') {
   const requests = [], saves = [], errors = [], hooks = []; let cursor = 0, controller;
   const shared = { provider: 'indextts-process', autoRead: false };
   const deps = {
-    shared, window: { __dshLocalAiTtsI18n: { current: () => 'en' } },
+    shared, window: { __dshLocalAiTtsI18n: { current: () => locale } },
     react: {
       createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat(Infinity).filter(v => v != null && v !== false) }),
       useState(initial) { const i = cursor++; if (!(i in hooks)) hooks[i] = initial; return [hooks[i], v => { hooks[i] = typeof v === 'function' ? v(hooks[i]) : v; }]; },
@@ -18,7 +18,7 @@ function harness() {
     saveSettings() { saves.push(JSON.parse(JSON.stringify(shared))); controller.sync(); },
     fetch: async (_url, options) => {
       const payload = JSON.parse(options.body);
-      if (payload.action !== 'discover' && payload.action !== 'status') { requests.push({ payload }); return { ok: true, json: async () => ({ ok: true }) }; }
+      if (!['discover', 'status', 'discover-model', 'load', 'browse-folders'].includes(payload.action)) { requests.push({ payload }); return { ok: true, json: async () => ({ ok: true }) }; }
       return new Promise(resolve => requests.push({ payload, finish(data, ok = true) { resolve({ ok, json: async () => data }); } }));
     },
   };
@@ -28,6 +28,81 @@ function harness() {
 const found = (project = '/fixture/project', extra = {}) => ({ config: { projectPath: project, pythonPath: project + '/python', modelDir: project + '/checkpoints', voice: project + '/speaker.wav', ...extra }, candidates: { pythonPath: [], modelDir: [], voices: [] }, warnings: [], layoutOnly: true });
 const flatten = node => node && typeof node === 'object' ? [node, ...node.children.flatMap(flatten)] : [];
 const text = node => typeof node === 'string' ? node : (node?.children || []).map(text).join('');
+
+test('folder browser cannot select an old directory during navigation or reopen after closing', async () => {
+  const h = harness(); h.controller.selectEngine('folder');
+  const browsing = flatten(h.render()).find(n => n.type === 'button' && text(n) === 'Choose folder').props.onClick();
+  assert.equal(flatten(h.render()).find(n => n.type === 'button' && text(n) === 'Use this folder').props.disabled, true);
+  flatten(h.render()).find(n => n.type === 'button' && text(n) === 'Close').props.onClick();
+  h.requests.find(r => r.payload.action === 'browse-folders').finish({ folder: '/late', parent: '/', folders: [] }); await browsing;
+  assert.ok(!text(h.render()).includes('Use this folder')); assert.equal(h.shared.localProcess.modelDir, '');
+});
+
+test('rescanning a folder preserves the selected voice and environment override; UI metadata stays browser-side', async () => {
+  const h = harness(); h.controller.selectEngine('folder');
+  Object.assign(h.shared.localProcess, { modelDir: '/models/qwen', modelType: 'qwen3', pythonPath: '/custom/python', voice: 'vivian' });
+  const scan = flatten(h.render()).find(n => n.type === 'button' && text(n) === 'Recognize folder').props.onClick();
+  h.requests.find(r => r.payload.action === 'discover-model').finish({ models: [{ config: { engine: 'folder', mode: 'process', launchPreset: 'folder', modelDir: '/models/qwen', modelType: 'qwen3', pythonPath: '/auto/python', voice: 'aiden' }, voices: [{ id: 'aiden', name: 'aiden' }, { id: 'vivian', name: 'vivian' }], referenceVoices: [] }] }); await scan; await flush();
+  assert.equal(h.shared.localProcess.pythonPath, '/custom/python'); assert.equal(h.shared.localProcess.voice, 'vivian');
+  const config = h.requests.filter(r => r.payload.action === 'configure').at(-1).payload.config;
+  assert.equal(config.modelChoices, undefined); assert.equal(config.voicePresets, undefined); assert.equal(config.engineProfiles, undefined);
+});
+
+test('folder UI keeps protocol profile, ignores stale recognition, and unloads the retained model', async () => {
+  const h = harness(); h.controller.selectEngine('generic'); h.controller.applyHttpPreset('piper');
+  h.controller.selectEngine('folder'); h.controller.updateSetting('modelDir', '/models');
+  const recognizing = flatten(h.render()).find(n => n.type === 'button' && text(n) === 'Recognize folder').props.onClick();
+  const request = h.requests.find(r => r.payload.action === 'discover-model');
+  h.controller.updateSetting('modelDir', '/different'); request.finish({ models: [{ config: { modelType: 'kokoro', modelDir: '/stale' }, voices: [], referenceVoices: [] }] });
+  await recognizing; assert.equal(h.shared.localProcess.modelDir, '/different'); assert.equal(h.shared.localProcess.modelType, '');
+  Object.assign(h.shared.localProcess, { modelType: 'kokoro', pythonPath: '/python', modelVoices: [{ id: 'zf_xiaobei', name: 'zf_xiaobei' }], voice: 'zf_xiaobei' });
+  const loading = flatten(h.render()).find(n => n.type === 'button' && text(n) === 'Load model').props.onClick();
+  await flush(); h.requests.find(r => r.payload.action === 'load').finish({ ready: true, voices: [{ id: 'zf_xiaobei', name: 'zf_xiaobei' }] }); await loading;
+  assert.ok(text(h.render()).includes('Model ready'));
+  await flatten(h.render()).find(n => n.type === 'button' && text(n) === 'Unload model').props.onClick();
+  assert.ok(h.requests.some(r => r.payload.action === 'unload')); assert.equal(h.shared.autoRead, false);
+  h.controller.selectEngine('generic'); assert.equal(h.shared.localProcess.httpPreset, 'piper');
+});
+test('folder Chinese UI explains cloning requirements and saves a reusable reference preset', () => {
+  const h = harness('zh'); h.controller.selectEngine('folder');
+  Object.assign(h.shared.localProcess, { modelType: 'f5', modelDir: '/f5', pythonPath: '/python', vocoderDir: '/vocos' });
+  assert.ok(text(h.render()).includes('参考音频原文')); assert.ok(text(h.render()).includes('选择文件夹'));
+  const load = () => flatten(h.render()).find(n => n.type === 'button' && text(n) === '加载模型');
+  assert.equal(load().props.disabled, true);
+  h.controller.updateSetting('referenceAudio', '/ref.wav'); h.controller.updateSetting('promptText', '原文');
+  assert.equal(h.shared.localProcess.voice, 'default'); assert.equal(load().props.disabled, false);
+  const name = flatten(h.render()).find(n => n.type === 'label' && text(n).includes('音色预设名称')).children.find(n => n.type === 'input');
+  name.props.onChange({ target: { value: '测试音色' } });
+  flatten(h.render()).find(n => n.type === 'button' && text(n) === '保存音色预设').props.onClick();
+  assert.equal(h.shared.localProcess.voicePresets[0].promptText, '原文');
+  h.controller.updateSetting('modelDir', '/voxcpm'); assert.equal(h.shared.localProcess.voicePresets[0].referenceAudio, '/ref.wav');
+});
+
+test('generic settings preserve engine profiles and configure HTTP instead of launching an engine', async () => {
+  const h = harness(); h.controller.updateSetting('projectPath', '/index-project');
+  h.controller.selectEngine('generic'); h.controller.applyHttpPreset('piper');
+  h.controller.updateSetting('endpoint', 'http://127.0.0.1:5078'); await flush();
+  const config = h.requests.filter(r => r.payload.action === 'configure').at(-1).payload.config;
+  assert.equal(config.engine, 'generic'); assert.equal(config.mode, 'http'); assert.equal(config.protocol, 'custom-http'); assert.equal(config.speechPath, '/synthesize');
+  assert.ok(text(h.render()).includes('Trial read')); assert.ok(!text(h.render()).includes('Project folder (required)'));
+  h.controller.selectEngine('indextts'); assert.equal(h.shared.localProcess.projectPath, '/index-project');
+  h.controller.selectEngine('generic'); assert.equal(h.shared.localProcess.endpoint, 'http://127.0.0.1:5078');
+  assert.equal(h.shared.provider, 'local-runtime');
+  h.controller.updateSetting('mode', 'process'); h.controller.updateSetting('command', 'python-custom');
+  h.controller.updateSetting('args', ['worker.py', '--voice', 'path with spaces']); await flush();
+  const worker = h.requests.filter(r => r.payload.action === 'configure').at(-1).payload.config;
+  assert.equal(worker.mode, 'process'); assert.equal(worker.launchPreset, 'custom'); assert.deepEqual(worker.args, ['worker.py', '--voice', 'path with spaces']);
+});
+
+test('generic connection status distinguishes reachability and selects an unambiguous voice', async () => {
+  const h = harness(); h.controller.selectEngine('generic'); h.controller.applyHttpPreset('piper'); await flush();
+  const button = flatten(h.render()).find(n => n.type === 'button' && text(n) === 'Test Connection');
+  const checking = button.props.onClick();
+  h.requests.find(r => r.payload.action === 'status').finish({ ready: false, status: 'reachable', voices: [{ id: 'only-speaker', name: 'Only speaker' }] });
+  await checking;
+  assert.equal(h.shared.localProcess.voice, 'only-speaker'); assert.ok(text(h.render()).includes('Service reachable'));
+  assert.ok(!text(h.render()).includes('Service reports ready'));
+});
 
 test('discovery fills gaps, saves the result, and deduplicates blur/button requests', async () => {
   const h = harness(); h.controller.updateSetting('projectPath', '/fixture');

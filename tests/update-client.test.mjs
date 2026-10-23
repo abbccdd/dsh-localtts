@@ -31,6 +31,18 @@ test('release selection ignores drafts, foreign archives and incomplete publicat
   assert.equal(chosen.candidate, true);
   assert.equal(api.compareReleaseVersions('0.1.10', '0.1.9'), 1);
 });
+
+test('installed release candidates and cached stable releases do not crash settings or suggest a downgrade', async () => {
+  const h = fixture({ current: '0.1.12-rc.2' }); await h.controller.check();
+  assert.equal(h.controller.available(), false);
+  const compare = h.api.compareReleaseVersions;
+  assert.equal(compare('0.1.12-rc.2', '0.1.12-rc.10'), -1);
+  assert.equal(compare('0.1.12', '0.1.12-rc.2'), 1);
+  assert.equal(compare('0.1.12-alpha.9', '0.1.12-beta.1'), -1);
+  assert.equal(compare('v0.1.12-rc.2+build.1', '0.1.12-rc.2'), 0);
+  assert.equal(h.api.selectPluginRelease([release('0.1.12-rc.2'), release('0.1.11')]).version, '0.1.12-rc.2');
+  assert.throws(() => compare('0.1.12-rc.02', '0.1.12'), /Invalid/);
+});
 test('automatic checks coalesce, persist a daily cache and never send credentials to GitHub', async () => {
   const h = fixture();
   await Promise.all([h.controller.check(), h.controller.check()]);

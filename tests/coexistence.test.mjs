@@ -150,7 +150,7 @@ for (const order of ['upstream-first', 'local-first']) {
     assert.equal(h.specs.get('settings.plugins.tab:local-ai-tts').label(), 'Local voice');
     const tree = h.component('local-ai-tts');
     const providers = h.all(tree).find(n => n.type === 'select' && n.props.value === 'local-runtime');
-    assert.deepEqual(h.all(providers).filter(n => n.type === 'option').map(n => n.props.value), ['local-runtime']);
+    assert.deepEqual(h.all(providers).filter(n => n.type === 'option').map(n => n.props.value), ['folder-model', 'indextts-process', 'gpt-sovits-process', 'local-runtime']);
     const message = h.component('local-ai-tts-read', messageProps('Hello.'));
     assert.ok(h.all(message).some(n => n.props?.['aria-label'] === 'Read this message locally'));
     assert.ok(!h.all(message).some(n => n.props?.['aria-label'] === 'Download audio'));
@@ -173,7 +173,7 @@ test('standalone UI offers all providers; read-only settings migration persists 
   assert.equal(JSON.parse(h.storage.get(LOCAL_KEY)).voice, 'test-voice');
   const panel = h.component('local-ai-tts');
   const select = h.all(panel).find(n => n.type === 'select' && n.props.value === 'rvc');
-  assert.deepEqual(h.all(select).filter(n => n.type === 'option').map(n => n.props.value), ['edge-tts', 'rvc', 'indextts-process', 'gpt-sovits-process']);
+  assert.deepEqual(h.all(select).filter(n => n.type === 'option').map(n => n.props.value), ['edge-tts', 'rvc', 'folder-model', 'indextts-process', 'gpt-sovits-process', 'local-runtime']);
   h.dispose(LOCAL_PACKAGE); h.load('local'); assert.equal(h.window.__dshLocalAiTtsSettings.get().voice, 'test-voice');
   h.window.__dshLocalAiTtsSettings.reset(); h.dispose(LOCAL_PACKAGE); h.load('local');
   assert.notEqual(h.window.__dshLocalAiTtsSettings.get().voice, 'test-voice'); assert.equal(h.storage.get(OLD_KEY), raw);

@@ -1,14 +1,14 @@
 # DeepSeek Harness Local AI TTS Plugin
 
-[English](README.md) | 简体中文 · **v0.1.11 发布候选版** · MIT
+[English](README.md) | 简体中文 · **v0.1.12-rc.5 发布候选版** · MIT
 
-为 DeepSeek Harness 增加本地进程 TTS Provider。插件启动用户已安装的 **IndexTTS 2.5** 或 **GPT-SoVITS** worker，逐句合成并在浏览器播放，不需要打开 WebUI。合成、播放与 Harness 消息生成独立进行。
+为 DeepSeek Harness 增加按协议配置的本地 **HTTP API / JSONL worker** 入口，并保留 **IndexTTS 2.5** 和 **GPT-SoVITS** 内置启动器。用户提供兼容的本地服务或已有 Python/项目/模型配置，插件逐句发送文本并在浏览器播放音频。合成、播放与 Harness 消息生成独立进行。
 
 ![本地 AI TTS 中文设置界面](assets/local-ai-tts-overview-zh.png)
 
 基于 [1624318455/dsh-plugin-tts](https://github.com/1624318455/dsh-plugin-tts)，上游提交 `ec0cf87ef52abb81ae91681a966aa3096365e631`。复用消息朗读按钮、Auto Read、Edge/RVC Provider、停止/暂停、设置面板、持久化与 Harness 插件 API。保留上游 MIT 版权和 LICENSE，详见 [NOTICE](NOTICE.md)。
 
-**插件不包含模型。** 不安装、裁剪、训练或修改模型；只启动用户配置的 worker 命令。不打包权重、参考音频、用户音色缓存、Python 环境或生成音频。
+**插件不包含模型。** 不安装、裁剪、训练或修改模型；使用已有环境运行内置加载配方或用户配置的 worker 命令。不打包权重、参考音频、用户音色缓存、Python 环境或生成音频。
 
 ```text
 Harness assistant 回复 → SentenceBuffer → Local Process Provider
@@ -18,15 +18,29 @@ Harness assistant 回复 → SentenceBuffer → Local Process Provider
                                       浏览器 Web Audio
 ```
 
+## 模型文件夹与中文设置
+
+选择“本地模型文件夹（自动识别）” → 选择文件夹 → 识别 → 选择音色 → 加载模型 → 试听。支持 Kokoro 82M、Qwen3 CustomVoice、F5 v1 Base、VoxCPM、CosyVoice 3 的已知布局，直接调用已有 SDK，无需配置网关。克隆模型需要参考音频与原文，可保存为可复用音色预设；环境路径等低频设置默认折叠。点击“卸载模型”释放本插件持有的模型进程。详见[文件夹使用指南](docs/MODEL-FOLDERS.zh-CN.md)。
+
+通用协议入口和 IndexTTS / GPT-SoVITS 原有入口继续保留。文件夹识别不会安装依赖，也不能推断未知权重的架构；运行环境需已准备好。
+
+以上五个文件夹模型已在本机完成直接 SDK 合成，以及正式 DSH 设置页加载、试听、暂停、继续、停止和卸载；此次不需要 HTTP 网关。实测范围见文件夹指南末尾。
+
+## 通用本地 TTS（发布候选版）
+
+新增 **通用本地 TTS（HTTP / worker）**：同一个 Provider 支持 OpenAI speech、自定义 JSON、URL 编码表单、multipart 音频上传及 JSONL worker。模型名独立于协议，参数预设共用同一连接器。OpenAI speech 指本地接口格式，不要求 OpenAI 账号或云服务。
+
+Piper、GPT-SoVITS 已完成原生 HTTP 合成验证；Kokoro、F5-TTS、VoxCPM1.5、Qwen3-TTS 0.6B、CosyVoice3 通过开发者本机 SDK 网关及正式 DSH 设置/播放器完成验证。这不代表各引擎所有原生 API/WebUI 都已验证。测试网关、模型环境和录音不随插件分发。配置方法和准确边界见[通用接入指南](docs/UNIVERSAL-TTS.zh-CN.md)与[模型实测记录](docs/CANDIDATE-VALIDATION.zh-CN.md)。
+
 ## 支持范围与要求
 
 同一个插件包适配 Harness 0.1（从 `0.1.0-rc.6` 起，包括 `0.1.1-rc.2`）和 0.2（从 `0.2.0-rc.2` 起）。通过公共服务和消息选择器连接宿主，旧版 Session 文本事件和新版 Agent 流式帧共用逐句播放器。兼容声明保留下一次 minor 版本变更的上限；未来接口若有破坏性变化，需要验证后再扩展。具体测试边界见[验证记录](docs/VALIDATION.md)。
 
 - DeepSeek Harness web profile，提供 `webServer`、`session/event` 和客户端 UI slots；Node.js 22+，浏览器支持 Web Audio。
-- 已安装的 IndexTTS 2.5 或 GPT-SoVITS、对应 Python 环境和模型文件。
-- Worker 需实现 [JSONL worker 协议](docs/PROCESS-WORKER-PROTOCOL.md)。`adapters/` 中提供两个只负责连接的示例，不包含权重。
+- 兼容的本地 HTTP 服务，或已有模型安装及实现 [JSONL worker 协议](docs/PROCESS-WORKER-PROTOCOL.md) 的命令。
+- 使用内置 IndexTTS / GPT-SoVITS 启动器时，需要对应 Python 环境、项目和模型文件。`adapters/` 中的连接示例不包含权重。
 
-并非任意原版 WebUI 或 `/tts` API 都能直接连接。协议必须匹配，[接口说明](docs/LOCAL-RUNTIME-PROTOCOL.md)包含准确请求/响应格式。两个引擎的 mock 测试已通过；本轮已验证真实 Harness 0.1/0.2 + IndexTTS 合成和浏览器播放控制，GPT-SoVITS 的真实模型播放仍待验证，见 [验证记录](docs/VALIDATION.md)。
+并非任意原版 WebUI 或 `/tts` API 都能直接连接，协议必须匹配。[旧接口说明](docs/LOCAL-RUNTIME-PROTOCOL.md)与[通用接入指南](docs/UNIVERSAL-TTS.zh-CN.md)包含请求/响应格式；历史宿主检查见[验证记录](docs/VALIDATION.md)，新增 GPT-SoVITS 实测见[GPU 记录](docs/GPU-VALIDATION.zh-CN.md)。
 
 ## 安装
 
@@ -38,7 +52,7 @@ Harness assistant 回复 → SentenceBuffer → Local Process Provider
 dsh plugin --profile web add github:abbccdd/dsh-localtts
 ```
 
-源码已包含编译后的客户端文件，无需运行构建脚本。需要固定安装包时可下载 [v0.1.11 发布附件](https://github.com/abbccdd/dsh-localtts/releases/tag/v0.1.11)。0.1.8 不兼容 Harness 0.2；只升级 Harness 不会更新已安装的插件。
+源码已包含编译后的客户端文件，无需运行构建脚本。[上一版 v0.1.11 发布附件](https://github.com/abbccdd/dsh-localtts/releases/tag/v0.1.11)不包含新增通用入口。本候选版请在发布后使用对应附件，或安装本地源码目录。0.1.8 不兼容 Harness 0.2；只升级 Harness 不会更新已安装的插件。
 
 本地开发时，也可以安装工作区目录：
 

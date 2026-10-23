@@ -5,13 +5,26 @@ const LOCAL_PLUGIN_PACKAGE = '@dsh-external/dsh-plugin-local-ai-tts';
 const LOCAL_PLUGIN_REPO = 'abbccdd/dsh-localtts';
 const LOCAL_PLUGIN_UPDATE_KEY = 'dsh-local-ai-tts-update-v1';
 function releaseVersion(value) {
-  const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(value || '');
-  return match ? match.slice(1).map(Number) : null;
+  const match = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.exec(value || '');
+  if (!match) return null;
+  const core = match.slice(1, 4).map(Number), pre = match[4]?.split('.') || [];
+  if (!core.every(Number.isSafeInteger) || pre.some(id => /^\d+$/.test(id) && id.length > 1 && id[0] === '0')) return null;
+  return [...core, pre];
 }
 function compareReleaseVersions(a, b) {
   const left = releaseVersion(a), right = releaseVersion(b);
   if (!left || !right) throw new Error('Invalid plugin release version.');
   for (let i = 0; i < 3; i++) if (left[i] !== right[i]) return left[i] < right[i] ? -1 : 1;
+  const lp = left[3], rp = right[3];
+  if (!lp.length || !rp.length) return lp.length === rp.length ? 0 : lp.length ? -1 : 1;
+  for (let i = 0; i < Math.max(lp.length, rp.length); i++) {
+    if (lp[i] === rp[i]) continue;
+    if (lp[i] === undefined || rp[i] === undefined) return lp[i] === undefined ? -1 : 1;
+    const ln = /^\d+$/.test(lp[i]), rn = /^\d+$/.test(rp[i]);
+    if (ln && rn) return BigInt(lp[i]) < BigInt(rp[i]) ? -1 : 1;
+    if (ln !== rn) return ln ? -1 : 1;
+    return lp[i] < rp[i] ? -1 : 1;
+  }
   return 0;
 }
 function selectPluginRelease(releases) {

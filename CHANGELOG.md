@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.12-rc.5 — 2026-10-24
+
+- Keep universal HTTP/JSONL integration and add a model-folder entry with Host folder browsing, bounded metadata recognition, preset voice discovery, saved reference voices and explicit load/unload controls.
+- Reuse installed SDK environments for Kokoro, Qwen3 CustomVoice, F5 v1 Base, VoxCPM and CosyVoice 3 through one packaged JSONL worker. Model assets and SDK environments remain external.
+- Complete bilingual folder settings and Chinese provider/player labels; remove the duplicate universal trial control. Reap the owned Windows Python process tree when a blocked SDK call prevents graceful shutdown.
+- Verify all five folder SDK recipes with real synthesis and formal DSH load/trial/pause/resume/stop/unload controls. Fix cached release comparison for installed SemVer prereleases so candidate settings render correctly.
+
+## 0.1.12-rc.1 — 2026-10-23
+
+- Add one protocol-based local HTTP/JSONL entry: OpenAI-compatible speech, custom JSON/form/multipart templates, explicit PCM and base64 responses, model/voice settings and connection/trial controls. Preserve existing official engine launchers.
+- Add optional readiness/voice queries, Host-environment Bearer authentication and local/LAN transport checks. No new plugin runtime dependencies or bundled models.
+- Verify native Piper and GPT-SoVITS HTTP synthesis; verify Kokoro, F5-TTS, VoxCPM1.5, Qwen3-TTS 0.6B and CosyVoice3 through a developer-local SDK gateway and the formal DSH settings/player. These gateway tests do not certify every upstream native API/WebUI. The test gateway and model environments are not included in the plugin.
+- This is a release candidate for protocol-based integration, not an all-model inference distribution. See the universal configuration guide and model validation records.
+
 ## 0.1.11 — 2026-10-05
 
 - Add daily, opt-out GitHub release checks, candidate labels, manual refresh and a confirmed market update/restore action. Offline, unsupported source and failed update states are visible; successful replacement requires restart.

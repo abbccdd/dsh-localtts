@@ -295,9 +295,10 @@ try {
   memStore.set('dsh-local-ai-tts-settings', JSON.stringify({ provider: 'gpt-sovits-process', autoRead: true, localProcess: local }));
   new Function('window', 'navigator', 'document', 'Audio', clientSrc)(window, navigator, document, Audio);
   const saved = window.__dshLocalAiTtsSettings;
-  check('Local process settings restored', saved.get().provider === 'gpt-sovits-process' && JSON.stringify(saved.get().localProcess) === JSON.stringify(local));
+  const preservesLaunchFields = value => Object.entries(local).every(([key, item]) => JSON.stringify(value[key]) === JSON.stringify(item));
+  check('Local process settings restored', saved.get().provider === 'gpt-sovits-process' && preservesLaunchFields(saved.get().localProcess));
   saved.save();
-  check('Local process settings persist all launch fields', JSON.stringify(JSON.parse(memStore.get('dsh-local-ai-tts-settings')).localProcess) === JSON.stringify(local));
+  check('Local process settings persist all launch fields', preservesLaunchFields(JSON.parse(memStore.get('dsh-local-ai-tts-settings')).localProcess));
   const comp = injectedComponents.filter(c => c.slot === 'settings.plugins.tab').at(-1);
   const hook = makeHookCtx();
   Object.assign(react, { useState: hook.useState, useEffect: hook.useEffect, useRef: hook.useRef, useMemo: hook.useMemo });
