@@ -52,7 +52,7 @@ Piper、GPT-SoVITS 已完成原生 HTTP 合成验证；Kokoro、F5-TTS、VoxCPM1
 dsh plugin --profile web add github:abbccdd/dsh-localtts
 ```
 
-源码已包含编译后的客户端文件，无需运行构建脚本。[上一版 v0.1.11 发布附件](https://github.com/abbccdd/dsh-localtts/releases/tag/v0.1.11)不包含新增通用入口。本候选版请在发布后使用对应附件，或安装本地源码目录。0.1.8 不兼容 Harness 0.2；只升级 Harness 不会更新已安装的插件。
+源码已包含编译后的客户端文件，无需运行构建脚本。也可从 [v0.1.12-rc.5 候选版](https://github.com/abbccdd/dsh-localtts/releases/tag/v0.1.12-rc.5)下载对应安装包和 SHA256 校验文件。上一版 v0.1.11 不包含新增通用接口及文件夹入口；0.1.8 不兼容 Harness 0.2。安装后重启 Harness 并刷新浏览器。
 
 本地开发时，也可以安装工作区目录：
 
@@ -75,7 +75,7 @@ dsh web
 
 ## 配置本地进程（IndexTTS 2.5 / GPT-SoVITS）
 
-打开 **设置 → 插件 → 语音 · Local AI TTS**，正常安装只需处理三项：
+打开 **设置 → 插件 → 语音 · 本地 AI 语音**，正常安装只需处理三项：
 
 1. **引擎**：选择 IndexTTS 2.5 或 GPT-SoVITS。
 2. **项目文件夹**：粘贴已有安装的完整目录，离开输入框时自动查找，也可点击 **自动查找文件**。支持项目根目录，以及常见的外层整合包目录。IndexTTS 与 GPT-SoVITS 分别保存自己的项目、模型和角色配置；切换回来会恢复之前填写的路径，不会把另一引擎的路径带过来。

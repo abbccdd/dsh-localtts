@@ -52,7 +52,7 @@ Install the current GitHub source (also replaces an older installation and enabl
 dsh plugin --profile web add github:abbccdd/dsh-localtts
 ```
 
-The client bundle is committed, so this source needs no build script. The [previous v0.1.11 archive](https://github.com/abbccdd/dsh-localtts/releases/tag/v0.1.11) does not contain the new universal entry. For this release candidate use its matching archive when published, or install a local checkout. Version 0.1.8 is incompatible with Harness 0.2; upgrading Harness alone does not update an already installed plugin.
+The client bundle is committed, so this source needs no build script. Alternatively, download the package and SHA256 checksum from the [v0.1.12-rc.5 candidate release](https://github.com/abbccdd/dsh-localtts/releases/tag/v0.1.12-rc.5). The previous v0.1.11 archive does not contain the new universal or model-folder entries. Version 0.1.8 is incompatible with Harness 0.2. Restart Harness and refresh the browser after installation.
 
 For local development, install a checkout instead:
 
@@ -172,7 +172,7 @@ Mock tests use Node built-ins and Python stdlib: no npm install, GPU, model down
 
 For an already running real service: `npm run smoke:runtime -- --engine indextts --endpoint http://127.0.0.1:8765 --voice default` (replace values). This checks health plus exactly three HTTP syntheses and writes no audio files. It is **not** a substitute for the real Harness/browser acceptance in [VALIDATION](docs/VALIDATION.md).
 
-Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), [model validation](docs/CANDIDATE-VALIDATION.zh-CN.md), and [LICENSE](LICENSE) before tagging `v0.1.12-rc.1`. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. This checkout does not imply that its candidate archive, GitHub tag or npm package has been published.
+Review [CHANGELOG](CHANGELOG.md), [release validation](docs/VALIDATION.md), [model-folder validation](docs/MODEL-FOLDERS.zh-CN.md), and [LICENSE](LICENSE) before tagging a release. The npm payload has an explicit file allowlist; `.gitignore` and a release scan exclude model files, private voices, recordings, environments, secrets and artifacts. Inspect the final Git diff and package before publishing. GitHub candidates and any npm publication are separate distribution steps.
 
 ## License
 
