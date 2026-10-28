@@ -121,6 +121,8 @@ Local Runtime uses a 55-character soft target and 70-character hard limit. Three
 
 | Symptom | Action |
 | --- | --- |
+| Market switch goes grey and stays unclickable for a while | Leave DSH and the page open until that request finishes; do not refresh or restart repeatedly. The cause is on the market side (reproduced on dshmarket 1.31.1): before enabling any plugin it fetches the catalog over the network to decide whether the package is a theme, and a slow link blocks the whole switch — measured ~70s, while this plugin's own activation takes about 1s. |
+| After toggling, DSH will not start at all | A hand-edited profile `cordis.patch.yml` ended up with two records for the same id. On `duplicate loader entry id: local-ai-tts`, delete **every** `local-ai-tts` row from the patch layer (back to `[]`) so the bundle layer mounts it once. Check with `dsh --profile <profile> --dump-config`: `id: local-ai-tts` must appear exactly once. |
 | Files missing / worker spawn failed | Rescan the project; check Python, model directory or API/YAML paths in Advanced, then Test Connection. |
 | Ready check says loading/unloaded/busy | Wait or manage Runtime state using its own controls. No automatic model loading is attempted. |
 | HTTP 404 / invalid JSON | Check protocol and base URL. A WebUI HTML page is not a Runtime endpoint. |

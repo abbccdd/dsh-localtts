@@ -125,6 +125,8 @@ Host 有公开插件清单时，会省略本插件自己的 Edge/RVC 路由；�
 
 | 状态/错误 | 处理方式 |
 | --- | --- |
+| 插件市场里点开关后变灰、几十秒按不了 | 保持 DSH 和页面打开，等这次请求结束，不要反复刷新或重启。原因在插件市场一侧（dshmarket 1.31.1 已复现）：它启用任何插件前都要联网拉一次目录来判断该包是不是主题，网络慢时这一个请求会阻塞整个开关，实测约 70 秒；插件自身的激活只需约 1 秒。 |
+| 开关点完、重启后 DSH 直接打不开 | 手工改过 profile 的 `cordis.patch.yml`，同一个 id 出现两条记录时会导致启动失败。若报 `duplicate loader entry id: local-ai-tts`，把补丁层里 `local-ai-tts` 的**所有**行删掉（回到 `[]`），只让 bundle 层挂载一次。自查：`dsh --profile <profile> --dump-config`，`id: local-ai-tts` 必须只出现 1 次。 |
 | 文件未找到 / worker 启动失败 | 先重新自动查找；高级设置中检查现有 Python、模型目录或 API/YAML 路径，再测试连接。 |
 | loading / unloaded / busy | 等待或用 Runtime 自己的管理方式处理；插件不主动加载模型。 |
 | Worker 返回异常/非 JSON | 检查 worker 是否遵守 JSONL 协议；WebUI 页面不是 worker。 |
