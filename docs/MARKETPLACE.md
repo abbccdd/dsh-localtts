@@ -3,13 +3,22 @@
 The market application (`dshmarket`) does **not** take submissions. It renders a
 catalog built from [`awesome-dsh-plugin`](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)
 — one YAML file per plugin under `data/plugins/`. Listing therefore means: keep
-this repository installable from source, then open one PR adding
-`data/plugins/abbccdd__dsh-localtts.yml`.
+this repository installable from source and keep that one file current.
 
 市场应用本身不收条目，它的目录由 `awesome-dsh-plugin` 的
-`data/plugins/<owner>__<repo>.yml` 生成。上架 = 仓库能被源码安装 + 向该仓库提一个条目 PR。
+`data/plugins/<owner>__<repo>.yml` 生成。上架 = 仓库能被源码安装 + 维护那一个条目文件。
 
-The prepared entry lives at [`submission/abbccdd__dsh-localtts.yml`](../submission/abbccdd__dsh-localtts.yml).
+**Status: already listed.** PR
+[#6597](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/6597)
+merged `data/plugins/abbccdd__dsh-localtts.yml` on 2026-10-16; the live catalog
+carries this repository under `voice`. No new submission PR is needed — the
+entry file is the thing to update when the feature set changes.
+/ **状态：已收录。** PR #6597 于 2026-10-16 合并了
+`data/plugins/abbccdd__dsh-localtts.yml`，实时目录里 `voice` 分类已可查到。
+不需要再提新的收录 PR——功能有变化时更新那一个文件即可。
+
+The copy this repo keeps in sync with the catalog is
+[`submission/abbccdd__dsh-localtts.yml`](../submission/abbccdd__dsh-localtts.yml).
 
 ## Requirements, and where this repo stands / 门槛与现状
 
@@ -22,7 +31,7 @@ The prepared entry lives at [`submission/abbccdd__dsh-localtts.yml`](../submissi
 | `dsh.client` only because browser UI ships | yes — `platform: web` |
 | Official `@deepseek-ai/*` packages as `peerDependencies`, each range with an explicit prerelease branch | yes |
 | `screenshots.json` in the repo root, 1–8 images | yes — two 1051×720 PNGs under `assets/` |
-| Entry file `data/plugins/abbccdd__dsh-localtts.yml` | prepared under `submission/` |
+| Entry file `data/plugins/abbccdd__dsh-localtts.yml` | merged 2026-10-16 (PR #6597); our copy under `submission/` |
 
 npm is optional for listing and is **not** published here: the package is scoped
 `@dsh-external/`, and the catalog only links a package whose `repository` field
@@ -62,36 +71,56 @@ refuses to boot in that state. Delete every `local-ai-tts` row from that patch
 layer so it is `[]` again and let the bundle layer mount the plugin once. Same
 note in the READMEs' troubleshooting tables.
 
-## Submitting / 提交流程
+## Updating the entry / 更新条目
+
+Edit **only** your own file, one PR. Two paths, both ending in the same PR:
 
 ```sh
+# A. clone path
 gh repo fork awesome-dsh-plugin/awesome-dsh-plugin --clone
-cd awesome-dsh-plugin
-git checkout -b add-dsh-localtts
+cd awesome-dsh-plugin && git checkout -b update-dsh-localtts
 cp <this-repo>/submission/abbccdd__dsh-localtts.yml data/plugins/abbccdd__dsh-localtts.yml
 git add data/plugins/abbccdd__dsh-localtts.yml
-git commit -m "Add abbccdd/dsh-localtts"
-git push -u origin add-dsh-localtts
-gh pr create --repo awesome-dsh-plugin/awesome-dsh-plugin --head abbccdd:add-dsh-localtts \
-  --title "Add abbccdd/dsh-localtts" \
-  --body "Local TTS playback for DeepSeek Harness (voice)."
+git commit -m "Update abbccdd/dsh-localtts"
+git push -u origin update-dsh-localtts
+gh pr create --repo awesome-dsh-plugin/awesome-dsh-plugin --head abbccdd:update-dsh-localtts \
+  --title "Update abbccdd/dsh-localtts" --body "Describe the current feature set; add the icon."
 ```
+
+```sh
+# B. API path for a one-line change (no clone of the 7.5k-entry catalog)
+base=$(gh api repos/awesome-dsh-plugin/awesome-dsh-plugin/git/ref/heads/main --jq .object.sha)
+gh api -X POST repos/abbccdd/awesome-dsh-plugin/git/refs \
+  -f ref=refs/heads/update-dsh-localtts -f sha="$base"                 # in your fork
+sha=$(gh api repos/awesome-dsh-plugin/awesome-dsh-plugin/contents/data/plugins/abbccdd__dsh-localtts.yml --jq .sha)
+gh api -X PUT repos/abbccdd/awesome-dsh-plugin/contents/data/plugins/abbccdd__dsh-localtts.yml \
+  -f message="Update abbccdd/dsh-localtts" -f branch=update-dsh-localtts -f sha="$sha" \
+  -f content="$(base64 -w0 submission/abbccdd__dsh-localtts.yml)"
+gh pr create --repo awesome-dsh-plugin/awesome-dsh-plugin --head abbccdd:update-dsh-localtts \
+  --title "Update abbccdd/dsh-localtts" --body "Describe the current feature set; add the icon."
+```
+
+Before opening it, diff the catalog's current copy against `submission/` — if the
+only difference is wording that no release changed, leave it alone.
 
 ## Rules that decide the outcome / 决定成败的几条
 
 - **One file per PR**, and change nothing else. Both READMEs there are generated
   from `data/plugins/*.yml`; hand edits are what made hundreds of PRs
-  unmergeable. Do not regenerate them locally either.
+  unmergeable. Do not regenerate them locally either, and never touch another
+  plugin's entry.
 - **`description.en` is the only required field**, and it is read as a claim and
-  checked against the code — no superlatives. If a release changes the feature
-  set, update this entry in a follow-up PR.
+  checked against the code — no superlatives, no numbers you cannot point at in
+  the source. If a release changes the feature set, update this entry.
 - **A description containing `: ` must be quoted** or YAML parses it as a nested
-  key. Both description lines in the prepared entry are quoted for that reason.
+  key. Both description lines in the entry are quoted for that reason.
 - CI runs, in order: entry count (≤3 per PR), `dsh.bundle` fetched from this
   repo, repo age (≥1 day), `awesome-lint` and the site build. A red check names
   the fix; push to the same branch — no new PR.
 - Category `voice` is the closest fit. Nobody is bounced over a category; a
   maintainer re-files it if a better one appears.
+- `icon:` must be a GitHub-hosted raster; `logo.png` (280×280) in this repo is
+  what the entry points at. Storefronts fall back to the owner avatar without it.
 - Listing is **not** a security review. Keep the READMEs' privacy section and the
   "connector, not a model distribution" boundary explicit — that is the part a
   visitor needs before installing.
